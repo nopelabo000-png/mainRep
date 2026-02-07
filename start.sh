@@ -52,6 +52,33 @@ else
 fi
 
 echo ""
+echo "=== Starting ComfyUI Server ==="
+
+# ComfyUIサーバーをバックグラウンドで起動
+cd /comfyui
+python -u main.py --listen 127.0.0.1 --port 8188 &
+COMFYUI_PID=$!
+echo "ComfyUI started with PID: $COMFYUI_PID"
+
+# ComfyUIサーバーが起動するまで待機
+echo "Waiting for ComfyUI server to be ready..."
+MAX_ATTEMPTS=60
+ATTEMPT=0
+while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+    if curl -s http://127.0.0.1:8188/ > /dev/null 2>&1; then
+        echo "ComfyUI server is ready!"
+        break
+    fi
+    ATTEMPT=$((ATTEMPT + 1))
+    echo "  Attempt $ATTEMPT/$MAX_ATTEMPTS - waiting..."
+    sleep 2
+done
+
+if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
+    echo "Warning: ComfyUI server may not be fully ready"
+fi
+
+echo ""
 echo "=== Starting RunPod Worker ==="
 
 # 既存のrunpod workerエントリーポイントを実行
