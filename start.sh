@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-VOLUME="/runpod-volume"
+VOLUME="/workspace"
 
 echo "=== ComfyUI Startup Script ==="
 echo "Checking Network Volume at $VOLUME..."

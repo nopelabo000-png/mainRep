@@ -12,7 +12,7 @@ set -e
 # ============================================================
 
 # Network Volume Mount Path
-VOLUME_PATH="/runpod-volume"
+VOLUME_PATH="/workspace"
 
 # S3 Bucket Info
 S3_BUCKET="s3://oatf0bxc6n/"
