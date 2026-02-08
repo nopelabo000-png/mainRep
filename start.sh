@@ -11,7 +11,7 @@ if [ -d "$VOLUME/models" ]; then
     echo "Network Volume found. Linking directories..."
     
     # 既存のディレクトリをバックアップ・削除してリンク
-    for dir in checkpoints controlnet loras vae; do
+    for dir in checkpoints controlnet loras vae ipadapter clip_vision; do
         if [ -d "/comfyui/models/$dir" ] && [ ! -L "/comfyui/models/$dir" ]; then
             rm -rf /comfyui/models/$dir
         fi
