@@ -46,17 +46,55 @@ if [ -d "$VOLUME/models" ]; then
     ls -la $VOLUME/models/controlnet/ 2>/dev/null || echo "  (none)"
     echo "LoRAs:"
     ls -la $VOLUME/models/loras/ 2>/dev/null || echo "  (none)"
+    echo "IP-Adapter:"
+    ls -la $VOLUME/models/ipadapter/ 2>/dev/null || echo "  (none)"
+    echo "CLIP Vision:"
+    ls -la $VOLUME/models/clip_vision/ 2>/dev/null || echo "  (none)"
 else
     echo "Warning: Network Volume not found at $VOLUME"
     echo "Running with container-local models only."
 fi
 
 echo ""
+echo "=== Pre-flight: Custom Nodes Check ==="
+echo "Installed custom nodes:"
+ls -la /comfyui/custom_nodes/ 2>/dev/null
+echo ""
+echo "IPAdapter Plus files:"
+ls -la /comfyui/custom_nodes/ComfyUI_IPAdapter_plus/*.py 2>/dev/null || echo "  NOT FOUND!"
+echo ""
+
+# ★ IPAdapter Plusのimportテスト（サイレント失敗を検出）
+echo "=== Testing IPAdapter Plus import ==="
+cd /comfyui
+python3 -c "
+import sys, traceback
+sys.path.insert(0, '.')
+try:
+    # ComfyUIのノード登録の仕組みを模倣
+    import importlib
+    spec = importlib.util.spec_from_file_location(
+        'ComfyUI_IPAdapter_plus',
+        'custom_nodes/ComfyUI_IPAdapter_plus/__init__.py'
+    )
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    if hasattr(mod, 'NODE_CLASS_MAPPINGS'):
+        names = list(mod.NODE_CLASS_MAPPINGS.keys())
+        print('SUCCESS: Registered nodes:', names)
+    else:
+        print('WARNING: No NODE_CLASS_MAPPINGS found')
+except Exception as e:
+    print('IMPORT FAILED:', e)
+    traceback.print_exc()
+" 2>&1 || echo "Python test script itself failed"
+
+echo ""
 echo "=== Starting ComfyUI Server ==="
 
-# ComfyUIサーバーをバックグラウンドで起動
+# ComfyUIサーバーをバックグラウンドで起動（★ログをファイルに保存）
 cd /comfyui
-python -u main.py --listen 127.0.0.1 --port 8188 &
+python -u main.py --listen 127.0.0.1 --port 8188 2>&1 | tee /tmp/comfyui_startup.log &
 COMFYUI_PID=$!
 echo "ComfyUI started with PID: $COMFYUI_PID"
 
@@ -77,6 +115,24 @@ done
 if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
     echo "Warning: ComfyUI server may not be fully ready"
 fi
+
+# ★ 起動後: カスタムノードのロード状況をAPI経由で確認
+echo ""
+echo "=== Post-startup: Node Registration Check ==="
+echo "Checking IPAdapter nodes via ComfyUI API..."
+OBJECT_INFO=$(curl -s http://127.0.0.1:8188/object_info 2>/dev/null || echo "{}")
+for node_name in IPAdapterUnifiedLoader IPAdapter IPAdapterModelLoader IPAdapterApply IPAdapterSimple; do
+    if echo "$OBJECT_INFO" | python3 -c "import sys,json; d=json.load(sys.stdin); print('$node_name' in d)" 2>/dev/null | grep -q True; then
+        echo "  ✅ $node_name: REGISTERED"
+    else
+        echo "  ❌ $node_name: NOT FOUND"
+    fi
+done
+
+# ★ ComfyUI起動ログからエラーを抽出
+echo ""
+echo "=== ComfyUI Startup Errors (if any) ==="
+grep -i "error\|fail\|cannot\|exception\|IPAdapter\|ipadapter" /tmp/comfyui_startup.log 2>/dev/null || echo "  (no errors found)"
 
 echo ""
 echo "=== Starting RunPod Worker ==="
