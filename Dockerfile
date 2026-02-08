@@ -9,10 +9,10 @@ RUN git clone https://github.com/Kosinkadink/ComfyUI-Advanced-ControlNet && \
 # IP-Adapter Plusをインストール（キャラクター一貫性保持用）
 RUN git clone https://github.com/cubiq/ComfyUI_IPAdapter_plus
 
-# 依存関係インストール（★両方）
+# 依存関係インストール
 RUN pip install --no-cache-dir \
-    -r comfyui_controlnet_aux/requirements.txt \
-    -r ComfyUI_IPAdapter_plus/requirements.txt
+    -r comfyui_controlnet_aux/requirements.txt && \
+    pip install --no-cache-dir insightface onnxruntime-gpu
 
 # 起動スクリプト追加
 COPY start.sh /start.sh
@@ -20,4 +20,5 @@ RUN chmod +x /start.sh
 
 WORKDIR /comfyui
 
+# エントリーポイント
 CMD ["/start.sh"]
