@@ -1,0 +1,28 @@
+# Node.js
+node_modules/
+package-lock.json
+
+# IDE
+.vscode/
+.idea/
+
+# ローカルデータ（大きいファイル）
+lora_training_data/
+img/
+characters/
+
+# ComfyUI関連（Dockerでクローンされる）
+comfyui_controlnet_aux/
+
+# Python
+__pycache__/
+*.pyc
+.env
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 一時ファイル
+*.log
+*.tmp
