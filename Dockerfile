@@ -11,8 +11,7 @@ RUN git clone https://github.com/cubiq/ComfyUI_IPAdapter_plus
 
 # 依存関係インストール
 RUN pip install --no-cache-dir \
-    -r comfyui_controlnet_aux/requirements.txt && \
-    pip install --no-cache-dir insightface onnxruntime-gpu
+    -r comfyui_controlnet_aux/requirements.txt
 
 # 起動スクリプト追加
 COPY start.sh /start.sh
