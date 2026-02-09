@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scaleff=1.0">
+  <meta name="viewport" content="width=device-width, initial-scalefff=1.0">
   <title>Story Canvas v5.4 - 統合撮影フロー</title>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
   <style>
@@ -4001,23 +4001,23 @@ ${storyText || '(なし)'}
       });
 
       const allText = textToCheck.join(' ').toLowerCase();
-      const detectedLoras = [];
+      const detectedLorasSet = new Set();
 
       for (const [jpKeyword, loraInfo] of Object.entries(EMOTION_LORA_MAP)) {
         if (allText.includes(jpKeyword)) {
-          detectedLoras.push(loraInfo.tag);
+          detectedLorasSet.add(loraInfo.tag);
           continue;
         }
         const enKeywords = loraInfo.en.split(', ');
         for (const enKey of enKeywords) {
           if (allText.includes(enKey)) {
-            detectedLoras.push(loraInfo.tag);
+            detectedLorasSet.add(loraInfo.tag);
             break;
           }
         }
       }
 
-      return detectedLoras.length > 0 ? detectedLoras.join(' ') : '';
+      return detectedLorasSet.size > 0 ? Array.from(detectedLorasSet).join(' ') : '';
     }
 
     // ========================================
