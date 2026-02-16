@@ -1011,7 +1011,7 @@
               </div>
             </div>
             <div style="margin-top:0.75rem;padding-top:0.75rem;border-top:1px solid var(--border);">
-              <div style="font-size:0.75rem;color:#80e0a0;margin-bottom:0.5rem;">🦴 ControlNet前処理設定（Gemini設計図→スケルトン抽出）
+              <div style="font-size:0.75rem;color:#80e0a0;margin-bottom:0.5rem;">🦴 ControlNet設定（Gemini設計図→スケルトン→ポーズ制御）
               </div>
               <div class="situation-field">
                 <label>前処理モデル</label>
@@ -1023,6 +1023,60 @@
                 </select>
                 <p style="font-size:0.6rem;color:var(--text-muted);margin-top:0.2rem;">Geminiのフルレンダリング画像からポーズスケルトンを抽出
                 </p>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.5rem;margin-top:0.5rem;">
+                <div class="situation-field">
+                  <label>Weight</label>
+                  <input type="number" id="sdControlNetWeight" value="0.85" min="0" max="2" step="0.05">
+                </div>
+                <div class="situation-field">
+                  <label>Start %</label>
+                  <input type="number" id="sdControlNetStartPercent" value="0.0" min="0" max="1" step="0.05">
+                </div>
+                <div class="situation-field">
+                  <label>End %</label>
+                  <input type="number" id="sdControlNetEndPercent" value="0.4" min="0" max="1" step="0.05">
+                </div>
+              </div>
+              <p style="font-size:0.6rem;color:var(--text-muted);margin-top:0.2rem;">
+                Weight=強度、Start/End=生成の何%でControlNetを適用するか</p>
+            </div>
+            <div style="margin-top:0.75rem;padding-top:0.75rem;border-top:1px solid var(--border);">
+              <div style="font-size:0.75rem;color:#ffa060;margin-bottom:0.5rem;">🎭 LoRA強度設定</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">
+                <div class="situation-field">
+                  <label>Model強度</label>
+                  <input type="number" id="sdLoraStrengthModel" value="0.8" min="0" max="1.5" step="0.05">
+                </div>
+                <div class="situation-field">
+                  <label>CLIP強度</label>
+                  <input type="number" id="sdLoraStrengthClip" value="0.8" min="0" max="1.5" step="0.05">
+                </div>
+              </div>
+              <p style="font-size:0.6rem;color:var(--text-muted);margin-top:0.2rem;">Model=画像生成への影響、CLIP=プロンプト解釈への影響</p>
+            </div>
+            <div style="margin-top:0.75rem;padding-top:0.75rem;border-top:1px solid var(--border);">
+              <div style="font-size:0.75rem;color:#60c0ff;margin-bottom:0.5rem;">✨ HiRes Fix（2パス仕上げ）</div>
+              <div class="situation-field">
+                <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;">
+                  <input type="checkbox" id="sdHiresFixEnabled" checked style="width:auto;">
+                  <span>HiRes Fix を有効にする</span>
+                </label>
+                <p style="font-size:0.65rem;color:var(--text-muted);margin-top:0.2rem;">1stパスで構図決定→アップスケール→2ndパスで仕上げ</p>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.5rem;">
+                <div class="situation-field">
+                  <label>Denoise</label>
+                  <input type="number" id="sdHiresFixDenoise" value="0.5" min="0.1" max="0.8" step="0.05">
+                </div>
+                <div class="situation-field">
+                  <label>Upscale倍率</label>
+                  <input type="number" id="sdHiresFixUpscale" value="1.5" min="1.0" max="2.0" step="0.1">
+                </div>
+                <div class="situation-field">
+                  <label>Steps</label>
+                  <input type="number" id="sdHiresFixSteps" value="15" min="5" max="50">
+                </div>
               </div>
             </div>
           </div>
@@ -1555,8 +1609,11 @@
       denoising: 0.6,
       resizeMode: 0,
       // RunPod ComfyUI用モデル設定
-      ponyModel: 'autismmixSDXL_autismmixPony.safetensors',  // Pony系最新版（AutismMix推奨）
+      ponyModel: 'ponyDiffusionV6XL.safetensors',
       controlNetModel: 'controlnet-openpose-sdxl-1.0.safetensors',
+      // LoRA強度設定
+      loraStrengthModel: 0.8,
+      loraStrengthClip: 0.8,
       // IP-Adapter設定（参照画像→キャラクター一貫性保持）
       ipAdapterEnabled: true,
       ipAdapterModel: 'ip-adapter-plus_sdxl_vit-h.safetensors',
@@ -1564,8 +1621,16 @@
       ipAdapterWeight: 0.6,
       ipAdapterStartAt: 0.0,
       ipAdapterEndAt: 0.85,
-      // ControlNet前処理（Geminiフルレンダリング画像→スケルトン抽出）
-      controlNetPreprocessor: 'DWPreprocessor'  // DWPreprocessor推奨（OpenPoseより高精度）
+      // ControlNet設定
+      controlNetPreprocessor: 'DWPreprocessor',
+      controlNetWeight: 0.85,
+      controlNetStartPercent: 0.0,
+      controlNetEndPercent: 0.4,
+      // HiRes Fix（2パス生成で品質向上）
+      hiresFixEnabled: true,
+      hiresFixDenoise: 0.5,
+      hiresFixUpscale: 1.5,
+      hiresFixSteps: 15
     };
 
     // 全体カメラのみ固定、他はキャラクター動的生成
@@ -1673,6 +1738,15 @@
       sdClipVisionModel: $('sdClipVisionModel'), sdIpAdapterWeight: $('sdIpAdapterWeight'),
       sdIpAdapterStartAt: $('sdIpAdapterStartAt'), sdIpAdapterEndAt: $('sdIpAdapterEndAt'),
       sdControlNetPreprocessor: $('sdControlNetPreprocessor'),
+      sdControlNetWeight: $('sdControlNetWeight'),
+      sdControlNetStartPercent: $('sdControlNetStartPercent'),
+      sdControlNetEndPercent: $('sdControlNetEndPercent'),
+      sdLoraStrengthModel: $('sdLoraStrengthModel'),
+      sdLoraStrengthClip: $('sdLoraStrengthClip'),
+      sdHiresFixEnabled: $('sdHiresFixEnabled'),
+      sdHiresFixDenoise: $('sdHiresFixDenoise'),
+      sdHiresFixUpscale: $('sdHiresFixUpscale'),
+      sdHiresFixSteps: $('sdHiresFixSteps'),
       // Camera
       cameraGrid: $('cameraGrid'),
       // Prompt Previews
@@ -1732,8 +1806,8 @@
       if (state.jailbreakEnabled) {
         const jbPreview = (state.jailbreakPrompt || '').substring(0, 50);
         if (jbPreview.includes('商業出版経験') || jbPreview.includes('ライトノベル作家') ||
-            jbPreview.includes('文芸賞受賞歴') || jbPreview.includes('純文学作家') ||
-            jbPreview.includes('TRPGのベテラン') || jbPreview.includes('ゲームマスター')) {
+          jbPreview.includes('文芸賞受賞歴') || jbPreview.includes('純文学作家') ||
+          jbPreview.includes('TRPGのベテラン') || jbPreview.includes('ゲームマスター')) {
           addLog('🔓 JB設定OK (system_instruction): ' + jbPreview.substring(0, 30) + '...', 'success');
         } else {
           addLog('⚠️ JB設定異常（カスタム?）: ' + jbPreview.substring(0, 30) + '...', 'warning');
@@ -1818,6 +1892,15 @@
         if (els.sdIpAdapterStartAt) els.sdIpAdapterStartAt.value = state.sdSettings.ipAdapterStartAt ?? SD_DEFAULTS.ipAdapterStartAt;
         if (els.sdIpAdapterEndAt) els.sdIpAdapterEndAt.value = state.sdSettings.ipAdapterEndAt ?? SD_DEFAULTS.ipAdapterEndAt;
         if (els.sdControlNetPreprocessor) els.sdControlNetPreprocessor.value = state.sdSettings.controlNetPreprocessor || SD_DEFAULTS.controlNetPreprocessor;
+        if (els.sdControlNetWeight) els.sdControlNetWeight.value = state.sdSettings.controlNetWeight ?? SD_DEFAULTS.controlNetWeight;
+        if (els.sdControlNetStartPercent) els.sdControlNetStartPercent.value = state.sdSettings.controlNetStartPercent ?? SD_DEFAULTS.controlNetStartPercent;
+        if (els.sdControlNetEndPercent) els.sdControlNetEndPercent.value = state.sdSettings.controlNetEndPercent ?? SD_DEFAULTS.controlNetEndPercent;
+        if (els.sdLoraStrengthModel) els.sdLoraStrengthModel.value = state.sdSettings.loraStrengthModel ?? SD_DEFAULTS.loraStrengthModel;
+        if (els.sdLoraStrengthClip) els.sdLoraStrengthClip.value = state.sdSettings.loraStrengthClip ?? SD_DEFAULTS.loraStrengthClip;
+        if (els.sdHiresFixEnabled) els.sdHiresFixEnabled.checked = state.sdSettings.hiresFixEnabled !== false;
+        if (els.sdHiresFixDenoise) els.sdHiresFixDenoise.value = state.sdSettings.hiresFixDenoise ?? SD_DEFAULTS.hiresFixDenoise;
+        if (els.sdHiresFixUpscale) els.sdHiresFixUpscale.value = state.sdSettings.hiresFixUpscale ?? SD_DEFAULTS.hiresFixUpscale;
+        if (els.sdHiresFixSteps) els.sdHiresFixSteps.value = state.sdSettings.hiresFixSteps ?? SD_DEFAULTS.hiresFixSteps;
         updateAPIStatus();
 
         // IndexedDBから参考画像を復元（非同期）
@@ -1929,6 +2012,15 @@
       if (els.sdIpAdapterStartAt) els.sdIpAdapterStartAt.addEventListener('change', () => { state.sdSettings.ipAdapterStartAt = parseFloat(els.sdIpAdapterStartAt.value); saveToStorage(); });
       if (els.sdIpAdapterEndAt) els.sdIpAdapterEndAt.addEventListener('change', () => { state.sdSettings.ipAdapterEndAt = parseFloat(els.sdIpAdapterEndAt.value); saveToStorage(); });
       if (els.sdControlNetPreprocessor) els.sdControlNetPreprocessor.addEventListener('change', () => { state.sdSettings.controlNetPreprocessor = els.sdControlNetPreprocessor.value; saveToStorage(); });
+      if (els.sdControlNetWeight) els.sdControlNetWeight.addEventListener('change', () => { state.sdSettings.controlNetWeight = parseFloat(els.sdControlNetWeight.value); saveToStorage(); });
+      if (els.sdControlNetStartPercent) els.sdControlNetStartPercent.addEventListener('change', () => { state.sdSettings.controlNetStartPercent = parseFloat(els.sdControlNetStartPercent.value); saveToStorage(); });
+      if (els.sdControlNetEndPercent) els.sdControlNetEndPercent.addEventListener('change', () => { state.sdSettings.controlNetEndPercent = parseFloat(els.sdControlNetEndPercent.value); saveToStorage(); });
+      if (els.sdLoraStrengthModel) els.sdLoraStrengthModel.addEventListener('change', () => { state.sdSettings.loraStrengthModel = parseFloat(els.sdLoraStrengthModel.value); saveToStorage(); });
+      if (els.sdLoraStrengthClip) els.sdLoraStrengthClip.addEventListener('change', () => { state.sdSettings.loraStrengthClip = parseFloat(els.sdLoraStrengthClip.value); saveToStorage(); });
+      if (els.sdHiresFixEnabled) els.sdHiresFixEnabled.addEventListener('change', () => { state.sdSettings.hiresFixEnabled = els.sdHiresFixEnabled.checked; saveToStorage(); });
+      if (els.sdHiresFixDenoise) els.sdHiresFixDenoise.addEventListener('change', () => { state.sdSettings.hiresFixDenoise = parseFloat(els.sdHiresFixDenoise.value); saveToStorage(); });
+      if (els.sdHiresFixUpscale) els.sdHiresFixUpscale.addEventListener('change', () => { state.sdSettings.hiresFixUpscale = parseFloat(els.sdHiresFixUpscale.value); saveToStorage(); });
+      if (els.sdHiresFixSteps) els.sdHiresFixSteps.addEventListener('change', () => { state.sdSettings.hiresFixSteps = parseInt(els.sdHiresFixSteps.value); saveToStorage(); });
 
       // 直近設定クリアボタン
       document.getElementById('clearAllRecentBtn')?.addEventListener('click', clearAllRecent);
@@ -2809,8 +2901,8 @@
         },
         "5": {
           "inputs": {
-            "width": width,
-            "height": height,
+            "width": (state.sdSettings.hiresFixEnabled) ? Math.round(width / (state.sdSettings.hiresFixUpscale || 1.5) / 8) * 8 : width,
+            "height": (state.sdSettings.hiresFixEnabled) ? Math.round(height / (state.sdSettings.hiresFixUpscale || 1.5) / 8) * 8 : height,
             "batch_size": 1
           },
           "class_type": "EmptyLatentImage",
@@ -2872,8 +2964,8 @@
         workflow["10"] = {
           "inputs": {
             "lora_name": loraName,
-            "strength_model": 1.0,
-            "strength_clip": 1.0,
+            "strength_model": state.sdSettings.loraStrengthModel ?? 0.8,
+            "strength_clip": state.sdSettings.loraStrengthClip ?? 0.8,
             "model": [currentModelNode, currentModelOutput],
             "clip": [currentClipNode, currentClipOutput]
           },
@@ -2897,50 +2989,55 @@
         const ipStartAt = parseFloat(state.sdSettings.ipAdapterStartAt) || 0.0;
         const ipEndAt = parseFloat(state.sdSettings.ipAdapterEndAt) || 0.85;
         const ipModel = state.sdSettings.ipAdapterModel || SD_DEFAULTS.ipAdapterModel;
-        const clipModel = state.sdSettings.clipVisionModel || SD_DEFAULTS.clipVisionModel;
+
+        // ★ ユーザー設定のモデル名からUnifiedLoaderのpresetを推定
+        let ipPreset = 'PLUS (high strength)'; // デフォルト
+        const modelLower = ipModel.toLowerCase();
+        if (modelLower.includes('plus-face') || modelLower.includes('plus_face')) {
+          ipPreset = 'PLUS FACE (portraits)';
+        } else if (modelLower.includes('full-face') || modelLower.includes('full_face')) {
+          ipPreset = 'FULL FACE - SD1.5 only (portraits stronger)';
+        } else if (modelLower.includes('plus')) {
+          ipPreset = 'PLUS (high strength)';
+        } else if (modelLower.includes('vit-g') || modelLower.includes('vit_g')) {
+          ipPreset = 'VIT-G (medium strength)';
+        } else if (modelLower.includes('light')) {
+          ipPreset = 'LIGHT - SD1.5 only (low strength)';
+        }
 
         addLog('  weight=' + ipWeight + ' start=' + ipStartAt + ' end=' + ipEndAt, 'info');
-        addLog('  IPAdapter: ' + ipModel + ' / CLIP: ' + clipModel, 'info');
+        addLog('  preset=' + ipPreset + ' (from model: ' + ipModel + ')', 'info');
 
-        // ノード20: 参照画像をロード（input_image.jpgとしてアップロード済み）
+        // ノード20: 参照画像をロード
         workflow["20"] = {
           "inputs": { "image": "input_image.jpg", "upload": "image" },
           "class_type": "LoadImage",
           "_meta": { "title": "Load Reference Image (IP-Adapter)" }
         };
 
-        // ★ ノード21: IPAdapterModelLoader（ユーザー設定のモデルを使用）
+        // ★ ノード21: IPAdapterUnifiedLoader（preset方式 — モデル自動検出で安定動作）
         workflow["21"] = {
           "inputs": {
-            "ipadapter_file": ipModel
+            "preset": ipPreset,
+            "model": [currentModelNode, currentModelOutput]
           },
-          "class_type": "IPAdapterModelLoader",
-          "_meta": { "title": "Load IPAdapter Model" }
+          "class_type": "IPAdapterUnifiedLoader",
+          "_meta": { "title": "Load IPAdapter Model (Unified)" }
         };
 
-        // ★ ノード22: CLIPVisionLoader（ユーザー設定のCLIPモデルを使用）
-        workflow["22"] = {
-          "inputs": {
-            "clip_name": clipModel
-          },
-          "class_type": "CLIPVisionLoader",
-          "_meta": { "title": "Load CLIP Vision Model" }
-        };
-
-        // ノード24: IPAdapter適用
+        // ★ ノード24: IPAdapter基本ノード（Advancedではなく — combine_embeds等の必須パラメータ不要）
         workflow["24"] = {
           "inputs": {
             "weight": ipWeight,
             "weight_type": "standard",
             "start_at": ipStartAt,
             "end_at": ipEndAt,
-            "model": [currentModelNode, currentModelOutput],
-            "ipadapter": ["21", 0],
-            "clip_vision": ["22", 0],
+            "model": ["21", 0],
+            "ipadapter": ["21", 1],
             "image": ["20", 0]
           },
-          "class_type": "IPAdapterAdvanced",
-          "_meta": { "title": "IP-Adapter Advanced (Character Consistency)" }
+          "class_type": "IPAdapter",
+          "_meta": { "title": "IP-Adapter (Character Consistency)" }
         };
 
         currentModelNode = "24";
@@ -2999,9 +3096,9 @@
         // 設計思想: 序盤40%でポーズ確定、中盤以降は表情LoRA+IP-Adapterで仕上げ
         workflow["13"] = {
           "inputs": {
-            "strength": 0.85,
-            "start_percent": 0.0,
-            "end_percent": 0.4,
+            "strength": state.sdSettings.controlNetWeight ?? SD_DEFAULTS.controlNetWeight,
+            "start_percent": state.sdSettings.controlNetStartPercent ?? SD_DEFAULTS.controlNetStartPercent,
+            "end_percent": state.sdSettings.controlNetEndPercent ?? SD_DEFAULTS.controlNetEndPercent,
             "positive": ["6", 0],
             "negative": ["7", 0],
             "control_net": ["12", 0],
@@ -3010,6 +3107,7 @@
           "class_type": "ControlNetApplyAdvanced",
           "_meta": { "title": "ControlNet (Pose Control from Gemini Design)" }
         };
+        addLog('🦴 ControlNet: weight=' + (state.sdSettings.controlNetWeight ?? 0.85) + ' start=' + (state.sdSettings.controlNetStartPercent ?? 0.0) + ' end=' + (state.sdSettings.controlNetEndPercent ?? 0.4), 'info');
 
         // KSamplerのpositive/negativeをControlNet出力に変更
         workflow["3"].inputs.positive = ["13", 0];
@@ -3020,6 +3118,52 @@
       workflow["3"].inputs.model = [currentModelNode, currentModelOutput];
       workflow["6"].inputs.clip = [currentClipNode, currentClipOutput];
       workflow["7"].inputs.clip = [currentClipNode, currentClipOutput];
+
+      // ========================================
+      // HiRes Fix（2パス仕上げ）
+      // 1stパス（低解像度）→ LatentUpscale → 2ndパス（仕上げ）
+      // ========================================
+      if (state.sdSettings.hiresFixEnabled) {
+        const hiresDenoise = state.sdSettings.hiresFixDenoise ?? 0.5;
+        const hiresSteps = state.sdSettings.hiresFixSteps ?? 15;
+        const hiresUpscale = state.sdSettings.hiresFixUpscale ?? 1.5;
+
+        addLog('✨ HiRes Fix: upscale=' + hiresUpscale + 'x denoise=' + hiresDenoise + ' steps=' + hiresSteps, 'info');
+
+        // ノード15: LatentUpscale（1stパス出力をアップスケール）
+        workflow["15"] = {
+          "inputs": {
+            "upscale_method": "nearest-exact",
+            "width": width,
+            "height": height,
+            "crop": "disabled",
+            "samples": ["3", 0]
+          },
+          "class_type": "LatentUpscale",
+          "_meta": { "title": "Latent Upscale (HiRes Fix)" }
+        };
+
+        // ノード16: 2nd KSampler（仕上げパス）
+        workflow["16"] = {
+          "inputs": {
+            "seed": seed + 1,
+            "steps": hiresSteps,
+            "cfg": cfg,
+            "sampler_name": comfySampler,
+            "scheduler": comfyScheduler,
+            "denoise": hiresDenoise,
+            "model": [currentModelNode, currentModelOutput],
+            "positive": workflow["3"].inputs.positive,
+            "negative": workflow["3"].inputs.negative,
+            "latent_image": ["15", 0]
+          },
+          "class_type": "KSampler",
+          "_meta": { "title": "KSampler (HiRes Fix 2nd Pass)" }
+        };
+
+        // VAEDecodeの入力を2ndパスの出力に変更
+        workflow["8"].inputs.samples = ["16", 0];
+      }
 
       return workflow;
     }
@@ -4358,70 +4502,151 @@ ${recentText}`;
       const char = state.situation.who[charIndex];
       if (!char) return null;
 
-      const rendered5W1H = render5W1HText({
-        scope: 'merged', includeRecent: true, charIndices: [charIndex],
-        includeGlossary: false, includeSpeechPattern: false
-      });
-
       // F3で生成したポーズ情報テキスト
       const poseFromTag = state.poseRecords[char.base.name] || null;
       const poseInfo = poseFromTag || char.recent.currentPose || '';
 
-      // ★ v5.6: system_instruction = ペルソナ + ルール + 出力形式
-      const f6SysText = `あなたはStable Diffusion（Pony Diffusion V6 XL）向けの英語プロンプトジェネレーターです。
+      // ★ 完全英語で視覚属性のみ（PROHIBITED_CONTENT回避）
+      const attrs = [];
+      attrs.push('Character: ' + (char.base.name || 'Unknown'));
+      if (char.base.gender) attrs.push('Gender: ' + char.base.gender);
+      if (char.base.species) attrs.push('Species: ' + _normalizeDanbooruTag(char.base.species));
+      if (char.base.hairColor) attrs.push('Hair color: ' + _normalizeDanbooruTag(char.base.hairColor));
+      if (char.base.hairStyle) attrs.push('Hair style: ' + _normalizeDanbooruTag(char.base.hairStyle));
+      if (char.base.eyeColor) attrs.push('Eye color: ' + _normalizeDanbooruTag(char.base.eyeColor));
+      if (char.base.ears) attrs.push('Ears: ' + _normalizeDanbooruTag(char.base.ears));
+      if (char.base.tail) attrs.push('Tail: ' + _normalizeDanbooruTag(char.base.tail));
+      if (char.base.otherFeatures) attrs.push('Features: ' + _normalizeDanbooruTag(char.base.otherFeatures));
+      const clothing = char.recent.clothingState || char.base.clothing;
+      if (clothing) attrs.push('Clothing: ' + _normalizeDanbooruTag(clothing));
+      if (char.recent.currentExpression) attrs.push('Expression: ' + _normalizeDanbooruTag(char.recent.currentExpression));
 
-日本語キャラクター情報から、高品質なSDプロンプトを生成してください。
+      const where = state.situation.where;
+      const bgDesc = where.recent.description || where.base.description;
+      if (bgDesc) attrs.push('Background: ' + _normalizeDanbooruTag(bgDesc));
 
-【出力形式】JSON:
-{
-  "positive": "1girl, solo, silver hair, long hair, ice blue eyes, cat ears, ...(タグをカンマ区切りで)",
-  "negative": "lowres, bad anatomy, bad hands, text, error, missing fingers, ...",
-  "lora": "<lora:model_name:weight> または空文字"
-}
+      const f6Data = attrs.join('\n');
 
-【ルール】
-- Pony Diffusion V6 XLのタグ形式（Danbooru準拠）を使用
-- score_9, score_8_up, score_7_up をpositiveの先頭に付ける
-- ポーズ、表情、服装状態を正確にタグ化
-- キャラの性別・種族特徴（獣耳、尻尾等）を必ず含める
-- JSONのみを出力`;
+      const f6Sys = `You are a Stable Diffusion prompt generator for Pony Diffusion V6 XL.
+Convert character visual attributes into Danbooru-style English tags.
 
-      // ★ contents = キャラデータ + ポーズ情報
-      const f6UserContent = rendered5W1H + (poseInfo ? '\n\n【ポーズ情報】\n' + poseInfo : '');
+Output ONLY this JSON:
+{"positive": "score_9, score_8_up, score_7_up, source_anime, 1girl, ...", "negative": "lowres, bad anatomy, ...", "lora": ""}
 
+Rules:
+- Use Danbooru tag format (comma-separated English tags)
+- Start positive with: score_9, score_8_up, score_7_up, source_anime
+- Include character gender, hair, eyes, outfit, pose, expression
+- Include species traits (animal ears, tail, horns, antlers)
+- Output JSON only, no explanation`;
+
+      const f6Input = f6Data + (poseInfo ? '\n\nPose: ' + poseInfo : '');
+
+      // --- API呼び出し ---
+      const m = MODELS.text[state.selectedTextModel];
+      const apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/' + m.endpoint + ':generateContent?key=' + state.apiKey;
+      const safetySettings = [
+        { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+        { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+        { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+        { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+        { category: 'HARM_CATEGORY_CIVIC_INTEGRITY', threshold: 'BLOCK_NONE' }
+      ];
+
+      // 試行1: system_instruction付き
+      let result = await _f6ApiCall(apiUrl, {
+        system_instruction: { parts: [{ text: f6Sys }] },
+        contents: [{ role: 'user', parts: [{ text: f6Input }] }],
+        generationConfig: { temperature: 0.3, maxOutputTokens: 2048 },
+        safetySettings
+      }, 'attempt1');
+
+      // 試行2: system_instructionをユーザーメッセージに統合
+      if (!result) {
+        addLog('🔄 F6 リトライ: system_instruction→ユーザーメッセージ統合', 'info');
+        result = await _f6ApiCall(apiUrl, {
+          contents: [{ role: 'user', parts: [{ text: f6Sys + '\n\n---\n\n' + f6Input }] }],
+          generationConfig: { temperature: 0.3, maxOutputTokens: 2048 },
+          safetySettings
+        }, 'attempt2');
+      }
+
+      // 試行3: APIキーローテーション（利用可能なら）
+      if (!result && state.apiKeys && state.apiKeys.length > 1) {
+        const altKey = state.apiKeys.find(k => k !== state.apiKey) || state.apiKey;
+        const altUrl = 'https://generativelanguage.googleapis.com/v1beta/models/' + m.endpoint + ':generateContent?key=' + altKey;
+        addLog('🔄 F6 リトライ: 別APIキー', 'info');
+        result = await _f6ApiCall(altUrl, {
+          contents: [{ role: 'user', parts: [{ text: f6Sys + '\n\n---\n\n' + f6Input }] }],
+          generationConfig: { temperature: 0.3, maxOutputTokens: 2048 },
+          safetySettings
+        }, 'attempt3-altkey');
+      }
+
+      if (result) {
+        state.lastF6Output = result;
+        addLog('🎯 F6 SDプロンプト生成完了: ' + (result.positive || '').substring(0, 50) + '...', 'success');
+        return result;
+      }
+
+      // ローカルフォールバック（強化版）
+      addLog('⚠️ F6: 全試行失敗 → ローカルフォールバック', 'warning');
+      const localPrompt = buildCharacterSDPromptEN(charIndex);
+      return { positive: localPrompt, negative: SD_DEFAULTS.negativePrompt, lora: '' };
+    }
+
+    // F6内部: Gemini API呼び出し + JSON抽出
+    async function _f6ApiCall(url, body, label) {
       try {
-        const m = MODELS.text[state.selectedTextModel];
-        const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + m.endpoint + ':generateContent?key=' + state.apiKey, {
+        const res = await fetch(url, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            system_instruction: { parts: [{ text: f6SysText }] },
-            contents: [{ role: 'user', parts: [{ text: f6UserContent }] }],
-            generationConfig: { temperature: 0.3, maxOutputTokens: 2048, responseMimeType: 'application/json' },
-            safetySettings: [
-              { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
-              { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
-              { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
-              { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
-              { category: 'HARM_CATEGORY_CIVIC_INTEGRITY', threshold: 'BLOCK_NONE' }
-            ]
-          })
+          body: JSON.stringify(body)
         });
-        if (!res.ok) throw new Error('F6 API Error: ' + res.status);
+        if (!res.ok) {
+          const errBody = await res.text().catch(() => '');
+          addLog('⚠️ F6(' + label + ') HTTP ' + res.status + ': ' + errBody.substring(0, 150), 'warning');
+          return null;
+        }
         const data = await res.json();
-        let txt = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-        if (!txt) throw new Error('F6: Empty response');
+
+        // プロンプトレベルブロック検出
+        if (data.promptFeedback?.blockReason) {
+          addLog('⚠️ F6(' + label + ') PromptBlocked: ' + data.promptFeedback.blockReason, 'warning');
+          return null;
+        }
+
+        // candidatesが空
+        if (!data.candidates || data.candidates.length === 0) {
+          addLog('⚠️ F6(' + label + ') No candidates. promptFeedback=' + JSON.stringify(data.promptFeedback || {}), 'warning');
+          return null;
+        }
+
+        const candidate = data.candidates[0];
+        const finishReason = candidate.finishReason || 'unknown';
+
+        // SAFETY でブロック
+        if (finishReason === 'SAFETY') {
+          const ratings = (candidate.safetyRatings || []).filter(r => r.blocked).map(r => r.category).join(',');
+          addLog('⚠️ F6(' + label + ') SafetyBlocked: ' + ratings, 'warning');
+          return null;
+        }
+
+        let txt = candidate.content?.parts?.[0]?.text || '';
+        if (!txt) {
+          addLog('⚠️ F6(' + label + ') Empty text. finishReason=' + finishReason, 'warning');
+          return null;
+        }
+
         txt = txt.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
         const jm = txt.match(/\{[\s\S]*\}/);
-        if (!jm) throw new Error('F6: JSON not found');
-        const parsed = JSON.parse(jm[0]);
-        state.lastF6Output = parsed;
-        addLog('🎯 F6 SDプロンプト生成完了: ' + (parsed.positive || '').substring(0, 50) + '...', 'success');
-        return parsed;
+        if (!jm) {
+          addLog('⚠️ F6(' + label + ') JSON not found: ' + txt.substring(0, 80), 'warning');
+          return null;
+        }
+        return JSON.parse(jm[0]);
       } catch (e) {
-        addLog('⚠️ F6失敗: ' + e.message + ' → ローカルフォールバック', 'warning');
-        // ローカルフォールバック
-        const localPrompt = buildCharacterSDPromptEN(charIndex);
-        return { positive: localPrompt, negative: SD_DEFAULTS.negativePrompt, lora: '' };
+        addLog('⚠️ F6(' + label + ') Error: ' + e.message, 'warning');
+        return null;
       }
     }
 
@@ -4540,13 +4765,16 @@ ${recentText}`;
     // Gemini画像生成（参考画像付き - 日本語プロンプト用）
 
     // ========================================
-    // ★★★ SD/Pony用英語プロンプト生成 ★★★
+    // ★★★ SD/Pony用英語プロンプト生成（高品質版）★★★
     // ========================================
     function buildCharacterSDPromptEN(charIndex) {
       const char = state.situation.who[charIndex];
       if (!char) return '';
 
-      const parts = [];
+      const tags = [];
+
+      // === 0. Pony品質スコア ===
+      tags.push('score_9', 'score_8_up', 'score_7_up', 'source_anime');
 
       // === 1. 基本（性別・人数）===
       const gender = (char.base.gender || '').toLowerCase().trim();
@@ -4555,78 +4783,161 @@ ${recentText}`;
         gender === '男' || gender === '男性' ||
         (gender.includes('male') && !gender.includes('female'))
       );
+      tags.push(isMale ? '1boy' : '1girl');
+      tags.push('solo');
 
-      if (isMale) {
-        parts.push('1boy', 'solo', 'male focus');
-      } else {
-        parts.push('1girl', 'solo');
-      }
-
-      // === 2. ポーズ・体勢（英語）===
-      if (char.recent.currentPose) {
-        parts.push(char.recent.currentPose);
-      }
-
-      // === 3. 構図（ポーズから自動推定）===
+      // === 2. 構図（ポーズから自動推定）===
       const pose = (char.recent.currentPose || '').toLowerCase();
-      if (pose.includes('lying') || pose.includes('on back') || pose.includes('on bed') || pose.includes('spread')) {
-        parts.push('from above', 'looking at viewer');
+      if (pose.includes('lying') || pose.includes('on back') || pose.includes('on bed')) {
+        tags.push('from above', 'looking at viewer');
       } else if (pose.includes('kneeling') || pose.includes('on knees') || pose.includes('all fours')) {
-        parts.push('from front', 'full body');
+        tags.push('full body');
       } else if (pose.includes('sitting') || pose.includes('seated')) {
-        parts.push('from front', 'upper body');
+        tags.push('upper body');
       } else if (pose.includes('standing')) {
-        parts.push('full body', 'standing');
+        tags.push('full body');
       } else {
-        parts.push('cowboy shot');
+        tags.push('cowboy shot');
       }
 
-      // === 4. 表情（英語）===
+      // === 3. ポーズ・体勢 ===
+      if (char.recent.currentPose) {
+        // ポーズテキストをDanbooruタグに分解
+        const poseText = char.recent.currentPose;
+        const poseTags = _extractPoseTags(poseText);
+        tags.push(...poseTags);
+      }
+
+      // === 4. 表情 ===
       if (char.recent.currentExpression) {
-        parts.push(char.recent.currentExpression);
+        const exprTags = _mapExpressionTags(char.recent.currentExpression);
+        tags.push(...exprTags);
       }
 
-      // === 5. 行動・状態（英語）===
-      if (char.recent.currentAction) {
-        parts.push(char.recent.currentAction);
+      // === 5. 髪 ===
+      if (char.base.hairColor) {
+        const hc = _normalizeDanbooruTag(char.base.hairColor);
+        tags.push(hc.includes('hair') ? hc : hc + ' hair');
+      }
+      if (char.base.hairStyle) {
+        const hs = _normalizeDanbooruTag(char.base.hairStyle);
+        tags.push(hs);
       }
 
-      // === 6. 服装状態（英語）===
-      if (char.recent.clothingState) {
-        parts.push(char.recent.clothingState);
-      }
-      if (!char.recent.clothingState && char.base.clothing) {
-        parts.push(char.base.clothing);
+      // === 6. 瞳 ===
+      if (char.base.eyeColor) {
+        const ec = _normalizeDanbooruTag(char.base.eyeColor);
+        tags.push(ec.includes('eyes') ? ec : ec + ' eyes');
       }
 
-      // === 7. 身体的特徴（英語）===
-      if (char.base.bodyType) parts.push(char.base.bodyType);
-      if (char.base.skinTone) parts.push(char.base.skinTone);
+      // === 7. 種族・獣特徴 ===
+      if (char.base.species) tags.push(_normalizeDanbooruTag(char.base.species));
+      if (char.base.ears) tags.push(_normalizeDanbooruTag(char.base.ears));
+      if (char.base.tail) tags.push(_normalizeDanbooruTag(char.base.tail));
+      if (char.base.otherFeatures) tags.push(_normalizeDanbooruTag(char.base.otherFeatures));
+      if (char.base.facialFeatures) tags.push(_normalizeDanbooruTag(char.base.facialFeatures));
 
-      // === 8. 種族・獣特徴（英語）===
-      if (char.base.species) parts.push(char.base.species);
-      if (char.base.ears) parts.push(char.base.ears);
-      if (char.base.tail) parts.push(char.base.tail);
-      if (char.base.otherFeatures) parts.push(char.base.otherFeatures);
+      // === 8. 体型・肌 ===
+      if (char.base.bodyType) tags.push(_normalizeDanbooruTag(char.base.bodyType));
+      if (char.base.skinTone) tags.push(_normalizeDanbooruTag(char.base.skinTone));
 
-      // === 9. 顔・髪（英語）===
-      if (char.base.hairColor) parts.push(char.base.hairColor + ' hair');
-      if (char.base.hairStyle) parts.push(char.base.hairStyle);
-      if (char.base.eyeColor) parts.push(char.base.eyeColor + ' eyes');
-      if (char.base.facialFeatures) parts.push(char.base.facialFeatures);
+      // === 9. 服装 ===
+      const clothing = char.recent.clothingState || char.base.clothing;
+      if (clothing) tags.push(_normalizeDanbooruTag(clothing));
 
-      // === 10. 背景・雰囲気（英語）===
+      // === 10. 行動 ===
+      if (char.recent.currentAction) tags.push(_normalizeDanbooruTag(char.recent.currentAction));
+
+      // === 11. 背景・照明 ===
       const where = state.situation.where;
       const bgDesc = where.recent.description || where.base.description;
-      if (bgDesc) parts.push(bgDesc);
-
+      if (bgDesc) tags.push(_normalizeDanbooruTag(bgDesc));
       const lighting = where.recent.lighting || where.base.lighting;
-      if (lighting) parts.push(lighting);
+      if (lighting) tags.push(_normalizeDanbooruTag(lighting));
 
-      const mood = state.situation.how.recent.mood || state.situation.how.base.mood;
-      if (mood) parts.push(mood);
+      // === 12. 品質ブースト ===
+      tags.push('masterpiece', 'best quality', 'detailed face', 'detailed eyes');
 
-      return parts.filter(Boolean).join(', ');
+      return tags.filter(Boolean).join(', ');
+    }
+
+    // --- ヘルパー: テキスト→Danbooruタグ正規化 ---
+    function _normalizeDanbooruTag(text) {
+      if (!text) return '';
+      return text.trim()
+        .replace(/\s+/g, ' ')
+        .toLowerCase()
+        // 日本語→英語の基本変換
+        .replace(/茶色/g, 'brown').replace(/赤/g, 'red').replace(/青/g, 'blue')
+        .replace(/緑/g, 'green').replace(/金色|金/g, 'blonde').replace(/銀色|銀/g, 'silver')
+        .replace(/白/g, 'white').replace(/黒/g, 'black').replace(/ピンク/g, 'pink')
+        .replace(/紫/g, 'purple').replace(/灰色/g, 'grey')
+        .replace(/長い/g, 'long').replace(/短い/g, 'short')
+        .replace(/の髪/g, ' hair').replace(/の目|の瞳/g, ' eyes')
+        .replace(/猫耳/g, 'cat ears').replace(/犬耳/g, 'dog ears').replace(/狐耳/g, 'fox ears')
+        .replace(/兎耳|うさ耳/g, 'rabbit ears').replace(/狼耳/g, 'wolf ears')
+        .replace(/鹿の角|鹿角/g, 'antlers').replace(/角/g, 'horns')
+        .replace(/尻尾/g, 'tail').replace(/翼|羽/g, 'wings')
+        .replace(/獣耳/g, 'animal ears').replace(/エルフ耳/g, 'pointed ears');
+    }
+
+    // --- ヘルパー: ポーズテキスト→Danbooruタグ抽出 ---
+    function _extractPoseTags(poseText) {
+      if (!poseText) return [];
+      const text = poseText.toLowerCase();
+      const found = [];
+      const poseMap = {
+        'standing': 'standing', 'sitting': 'sitting', 'kneeling': 'kneeling',
+        'lying': 'lying down', 'crouching': 'crouching', 'leaning': 'leaning forward',
+        'arms crossed': 'arms crossed', 'hands on hips': 'hands on hips',
+        'hand on chest': 'hand on own chest', 'hands together': 'hands together',
+        'looking away': 'looking away', 'looking at viewer': 'looking at viewer',
+        'looking down': 'looking down', 'looking up': 'looking up',
+        'looking to the side': 'looking to the side', 'looking back': 'looking back',
+        'from behind': 'from behind', 'from side': 'from side',
+        'pigeon-toed': 'pigeon-toed', 'crossed legs': 'crossed legs',
+        'spread legs': 'spread legs', 'hunched': 'hunched over',
+        'head tilt': 'head tilt', 'turned away': 'turned away',
+        'facing away': 'facing away', 'facing side': 'facing to the side',
+        'clasped': 'hands clasped', 'fidgeting': 'fidgeting',
+        'trembling': 'trembling', 'curled': 'curled up'
+      };
+      for (const [key, tag] of Object.entries(poseMap)) {
+        if (text.includes(key)) found.push(tag);
+      }
+      // 未マッチの場合はそのまま使用
+      if (found.length === 0 && poseText.trim()) found.push(poseText.trim());
+      return found;
+    }
+
+    // --- ヘルパー: 表情テキスト→Danbooruタグ ---
+    function _mapExpressionTags(expr) {
+      if (!expr) return [];
+      const text = expr.toLowerCase();
+      const found = [];
+      const exprMap = {
+        'smile': 'smile', 'grin': 'grin', 'smirk': 'smirk',
+        'blush': 'blush', 'embarrass': 'embarrassed',
+        'angry': 'angry', 'frown': 'frowning',
+        'sad': 'sad', 'crying': 'crying', 'tears': 'tears',
+        'surprised': 'surprised', 'shocked': 'shocked', 'wide eyes': 'wide eyes',
+        'nervous': 'nervous', 'anxious': 'nervous',
+        'happy': 'happy', 'laughing': 'laughing', 'joy': 'joyful',
+        'serious': 'serious', 'expressionless': 'expressionless',
+        'closed eyes': 'closed eyes', 'half-closed': 'half-closed eyes',
+        'open mouth': 'open mouth', 'closed mouth': 'closed mouth',
+        'pout': 'pout', 'tongue out': 'tongue out',
+        'scared': 'scared', 'fear': 'scared',
+        'sleepy': 'sleepy', 'tired': 'tired',
+        'confused': 'confused', 'annoyed': 'annoyed',
+        '緊張': 'nervous', '恥ずかし': 'embarrassed', '怒': 'angry',
+        '悲し': 'sad', '泣': 'crying', '笑': 'smile', '驚': 'surprised'
+      };
+      for (const [key, tag] of Object.entries(exprMap)) {
+        if (text.includes(key)) found.push(tag);
+      }
+      if (found.length === 0 && expr.trim()) found.push(expr.trim());
+      return found;
     }
 
     // ★ SD WebUI画像生成（参照画像 + 設計図画像の同時使用対応）
