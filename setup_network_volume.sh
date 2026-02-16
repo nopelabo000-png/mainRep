@@ -33,11 +33,13 @@ fi
 
 # 1. Prepare Directory Structure
 echo ""
-echo "[1/4] Creating directory structure..."
+echo "[1/6] Creating directory structure..."
 mkdir -p $VOLUME_PATH/models/checkpoints
 mkdir -p $VOLUME_PATH/models/loras
 mkdir -p $VOLUME_PATH/models/vae
 mkdir -p $VOLUME_PATH/models/controlnet
+mkdir -p $VOLUME_PATH/models/ipadapter
+mkdir -p $VOLUME_PATH/models/clip_vision
 mkdir -p $VOLUME_PATH/input
 mkdir -p $VOLUME_PATH/output
 
@@ -46,13 +48,15 @@ echo "   - $VOLUME_PATH/models/checkpoints"
 echo "   - $VOLUME_PATH/models/loras"
 echo "   - $VOLUME_PATH/models/vae"
 echo "   - $VOLUME_PATH/models/controlnet"
+echo "   - $VOLUME_PATH/models/ipadapter"
+echo "   - $VOLUME_PATH/models/clip_vision"
 echo "   - $VOLUME_PATH/input"
 echo "   - $VOLUME_PATH/output"
 
 
 # 2. Download Base Model (Pony V6 XL)
 echo ""
-echo "[2/4] Downloading Pony Diffusion V6 XL Base Model..."
+echo "[2/6] Downloading Pony Diffusion V6 XL Base Model..."
 cd $VOLUME_PATH/models/checkpoints
 
 if [ -f "ponyDiffusionV6XL.safetensors" ]; then
@@ -65,9 +69,38 @@ else
     echo "✅ Pony V6 XL downloaded."
 fi
 
-# 3. Download ControlNet Model
+# 3. Download IP-Adapter Model (SDXL PLUS)
 echo ""
-echo "[3/4] Downloading ControlNet OpenPose SDXL..."
+echo "[3/6] Downloading IP-Adapter PLUS (SDXL)..."
+cd $VOLUME_PATH/models/ipadapter
+
+if [ -f "ip-adapter-plus_sdxl_vit-h.safetensors" ]; then
+    echo "✅ IP-Adapter PLUS already exists. Skipping download."
+else
+    echo "Downloading from HuggingFace..."
+    wget -c "https://huggingface.co/h94/IP-Adapter/resolve/main/sdxl_models/ip-adapter-plus_sdxl_vit-h.safetensors" \
+         --progress=bar:force 2>&1
+    echo "✅ IP-Adapter PLUS downloaded."
+fi
+
+# 4. Download CLIP Vision Model
+echo ""
+echo "[4/6] Downloading CLIP Vision (ViT-H)..."
+cd $VOLUME_PATH/models/clip_vision
+
+if [ -f "CLIP-ViT-H-14-laion2B-s32B-b79K.safetensors" ]; then
+    echo "✅ CLIP Vision already exists. Skipping download."
+else
+    echo "Downloading from HuggingFace..."
+    wget -c "https://huggingface.co/h94/IP-Adapter/resolve/main/models/image_encoder/model.safetensors" \
+         -O CLIP-ViT-H-14-laion2B-s32B-b79K.safetensors \
+         --progress=bar:force 2>&1
+    echo "✅ CLIP Vision downloaded."
+fi
+
+# 5. Download ControlNet Model
+echo ""
+echo "[5/6] Downloading ControlNet OpenPose SDXL..."
 cd $VOLUME_PATH/models/controlnet
 
 if [ -f "controlnet-openpose-sdxl-1.0.safetensors" ]; then
@@ -81,7 +114,7 @@ fi
 
 # 4. Download LoRAs from S3
 echo ""
-echo "[4/4] Downloading LoRA models from S3..."
+echo "[6/6] Downloading LoRA models from S3..."
 cd $VOLUME_PATH/models/loras
 
 # Check for AWS CLI
