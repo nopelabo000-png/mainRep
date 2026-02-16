@@ -94,6 +94,35 @@ if [ -d "$VOLUME/models" ]; then
     echo ""
     echo "=== ComfyUI extra_model_paths.yaml ==="
     cat /comfyui/extra_model_paths.yaml 2>/dev/null || echo "  (not found)"
+
+    # ========================================
+    # ★ モデル自動ダウンロード（初回のみ）
+    # Network Volumeに保存されるため、以降のコールドスタートでは不要
+    # ========================================
+    echo ""
+    echo "=== Auto-download Missing Models ==="
+
+    # IP-Adapter Plus SDXL (ViT-H) - キャラクター一貫性保持用
+    if [ ! -f "$VOLUME/models/ipadapter/ip-adapter-plus_sdxl_vit-h.safetensors" ]; then
+        echo "Downloading IP-Adapter Plus SDXL model (~100MB)..."
+        wget -q --show-progress -O "$VOLUME/models/ipadapter/ip-adapter-plus_sdxl_vit-h.safetensors" \
+            "https://huggingface.co/h94/IP-Adapter/resolve/main/sdxl_models/ip-adapter-plus_sdxl_vit-h.safetensors" \
+            && echo "  ✅ IP-Adapter model downloaded" \
+            || echo "  ❌ IP-Adapter model download failed"
+    else
+        echo "  ✅ IP-Adapter model already exists"
+    fi
+
+    # CLIP Vision ViT-H - IP-Adapterが参照画像をエンコードするために必要
+    if [ ! -f "$VOLUME/models/clip_vision/CLIP-ViT-H-14-laion2B-s32B-b79K.safetensors" ]; then
+        echo "Downloading CLIP Vision ViT-H model (~3.9GB)..."
+        wget -q --show-progress -O "$VOLUME/models/clip_vision/CLIP-ViT-H-14-laion2B-s32B-b79K.safetensors" \
+            "https://huggingface.co/h94/IP-Adapter/resolve/main/models/image_encoder/model.safetensors" \
+            && echo "  ✅ CLIP Vision model downloaded" \
+            || echo "  ❌ CLIP Vision model download failed"
+    else
+        echo "  ✅ CLIP Vision model already exists"
+    fi
 else
     echo "Warning: Network Volume not found at $VOLUME"
     echo "Running with container-local models only."
