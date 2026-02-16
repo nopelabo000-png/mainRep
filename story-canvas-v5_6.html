@@ -1730,11 +1730,13 @@
 
       // JB状態確認
       if (state.jailbreakEnabled) {
-        const jbPreview = (state.jailbreakPrompt || '').substring(0, 30);
-        if (jbPreview.includes('熟練の小説家') || jbPreview.includes('文芸作家') || jbPreview.includes('ロールプレイ')) {
-          addLog('🔓 JB設定OK: ' + jbPreview + '...', 'success');
+        const jbPreview = (state.jailbreakPrompt || '').substring(0, 50);
+        if (jbPreview.includes('商業出版経験') || jbPreview.includes('ライトノベル作家') ||
+            jbPreview.includes('文芸賞受賞歴') || jbPreview.includes('純文学作家') ||
+            jbPreview.includes('TRPGのベテラン') || jbPreview.includes('ゲームマスター')) {
+          addLog('🔓 JB設定OK (system_instruction): ' + jbPreview.substring(0, 30) + '...', 'success');
         } else {
-          addLog('⚠️ JB設定異常、リセット推奨', 'warning');
+          addLog('⚠️ JB設定異常（カスタム?）: ' + jbPreview.substring(0, 30) + '...', 'warning');
         }
       }
 
@@ -2522,7 +2524,7 @@
     }
 
     // ControlNet付きでRunPod ComfyUI生成
-    async function generateWithRunPodComfyUI(prompt, referenceImage = null, controlNetImage = null) {
+    async function generateWithRunPodComfyUI(prompt, referenceImage = null, controlNetImage = null, f6Negative = '') {
       if (!state.runpodConnected) {
         throw new Error('RunPodに接続してください');
       }
@@ -2543,7 +2545,8 @@
         seed: Math.floor(Math.random() * 999999999),
         lora: loraConfig,
         controlNetImage: controlNetImage,  // ControlNet用: Gemini設計図画像
-        referenceImage: referenceImage      // ★ IP-Adapter用: WHOの参照画像（キャラ一貫性）
+        referenceImage: referenceImage,     // ★ IP-Adapter用: WHOの参照画像（キャラ一貫性）
+        negativePromptOverride: f6Negative  // ★ F6のnegative出力（あればマージ）
       });
 
       const requestData = {
@@ -2705,7 +2708,7 @@
             if ((failOutputStr.includes('IPAdapter model not found') || failOutputStr.includes('IPAdapter')) && referenceImage) {
               addLog('⚠️ IP-Adapterモデル未検出: IP-Adapterなしでリトライします...', 'warning');
               addLog('💡 解決方法: Network Volumeの models/ipadapter/ に ip-adapter-plus_sdxl_vit-h.safetensors を配置してください', 'info');
-              return generateWithRunPodComfyUI(prompt, null, controlNetImage);
+              return generateWithRunPodComfyUI(prompt, null, controlNetImage, f6Negative);
             }
 
             throw new Error('Generation failed: ' + errMsg + (status.output ? ' | output: ' + JSON.stringify(status.output).substring(0, 200) : ''));
@@ -2744,11 +2747,40 @@
     // ★核心設計: controlNetImage(Gemini設計図)→プリプロセッサ→ControlNetでポーズ制御
     //           referenceImage(WHO参照画像)→IP-Adapterでキャラクター一貫性保持
     function buildPonyWorkflow(prompt, options) {
-      const { width, height, steps, cfg, seed, lora, controlNetImage, referenceImage } = options;
+      const { width, height, steps, cfg, seed, lora, controlNetImage, referenceImage, negativePromptOverride } = options;
 
-      // Pony用プロンプト補強
-      const ponyPrompt = "score_9, score_8_up, score_7_up, source_anime, " + prompt;
-      const negativePrompt = "score_6, score_5, score_4, low quality, worst quality, blurry, text, watermark, signature, jpeg artifacts, bad anatomy, bad hands, deformed";
+      // ★ SD WebUIサンプラー名 → ComfyUI (sampler_name, scheduler) マッピング
+      const sdSampler = state.sdSettings.sampler || 'DPM++ 2M Karras';
+      let comfySampler = 'euler_ancestral';
+      let comfyScheduler = 'normal';
+      const samplerLower = sdSampler.toLowerCase();
+      if (samplerLower.includes('dpmpp_2m') || samplerLower.includes('dpm++ 2m')) {
+        comfySampler = 'dpmpp_2m';
+      } else if (samplerLower.includes('dpmpp_sde') || samplerLower.includes('dpm++ sde')) {
+        comfySampler = 'dpmpp_sde';
+      } else if (samplerLower.includes('dpmpp_2s') || samplerLower.includes('dpm++ 2s')) {
+        comfySampler = 'dpmpp_2s_ancestral';
+      } else if (samplerLower.includes('euler_a') || samplerLower.includes('euler a')) {
+        comfySampler = 'euler_ancestral';
+      } else if (samplerLower.includes('euler')) {
+        comfySampler = 'euler';
+      } else if (samplerLower.includes('ddim')) {
+        comfySampler = 'ddim';
+      } else if (samplerLower.includes('uni_pc') || samplerLower.includes('unipc')) {
+        comfySampler = 'uni_pc';
+      }
+      if (samplerLower.includes('karras')) comfyScheduler = 'karras';
+      else if (samplerLower.includes('exponential')) comfyScheduler = 'exponential';
+
+      // ★ promptPrefix を Pony用スコアタグと結合して使用
+      const ponyScoreTags = "score_9, score_8_up, score_7_up, source_anime";
+      const prefix = state.sdSettings.promptPrefix ? ponyScoreTags + ', ' + state.sdSettings.promptPrefix + ', ' : ponyScoreTags + ', ';
+      const ponyPrompt = prefix + prompt;
+
+      // ★ sdSettings.negativePrompt を使用（F6のnegativeオーバーライドがあればマージ）
+      const baseNeg = state.sdSettings.negativePrompt || SD_DEFAULTS.negativePrompt;
+      const ponyNegPrefix = "score_6, score_5, score_4, ";
+      const negativePrompt = ponyNegPrefix + (negativePromptOverride ? negativePromptOverride + ', ' + baseNeg : baseNeg);
 
       // SDXL/Pony用 基本ワークフロー
       const workflow = {
@@ -2757,8 +2789,8 @@
             "seed": seed,
             "steps": steps,
             "cfg": cfg,
-            "sampler_name": "euler_ancestral",
-            "scheduler": "normal",
+            "sampler_name": comfySampler,
+            "scheduler": comfyScheduler,
             "denoise": 1,
             "model": ["4", 0],
             "positive": ["6", 0],
@@ -2864,24 +2896,35 @@
         const ipWeight = parseFloat(state.sdSettings.ipAdapterWeight) || 0.6;
         const ipStartAt = parseFloat(state.sdSettings.ipAdapterStartAt) || 0.0;
         const ipEndAt = parseFloat(state.sdSettings.ipAdapterEndAt) || 0.85;
+        const ipModel = state.sdSettings.ipAdapterModel || SD_DEFAULTS.ipAdapterModel;
+        const clipModel = state.sdSettings.clipVisionModel || SD_DEFAULTS.clipVisionModel;
 
         addLog('  weight=' + ipWeight + ' start=' + ipStartAt + ' end=' + ipEndAt, 'info');
+        addLog('  IPAdapter: ' + ipModel + ' / CLIP: ' + clipModel, 'info');
 
-        // ノード20: 参照画像をロード（input_image.pngとしてアップロード済み）
+        // ノード20: 参照画像をロード（input_image.jpgとしてアップロード済み）
         workflow["20"] = {
           "inputs": { "image": "input_image.jpg", "upload": "image" },
           "class_type": "LoadImage",
           "_meta": { "title": "Load Reference Image (IP-Adapter)" }
         };
 
-        // ノード21: IPAdapterUnifiedLoader（モデル + CLIP Vision一括ロード）
+        // ★ ノード21: IPAdapterModelLoader（ユーザー設定のモデルを使用）
         workflow["21"] = {
           "inputs": {
-            "preset": "PLUS (high strength)",
-            "model": [currentModelNode, currentModelOutput]
+            "ipadapter_file": ipModel
           },
-          "class_type": "IPAdapterUnifiedLoader",
-          "_meta": { "title": "Load IPAdapter Model (Unified)" }
+          "class_type": "IPAdapterModelLoader",
+          "_meta": { "title": "Load IPAdapter Model" }
+        };
+
+        // ★ ノード22: CLIPVisionLoader（ユーザー設定のCLIPモデルを使用）
+        workflow["22"] = {
+          "inputs": {
+            "clip_name": clipModel
+          },
+          "class_type": "CLIPVisionLoader",
+          "_meta": { "title": "Load CLIP Vision Model" }
         };
 
         // ノード24: IPAdapter適用
@@ -2891,12 +2934,13 @@
             "weight_type": "standard",
             "start_at": ipStartAt,
             "end_at": ipEndAt,
-            "model": ["21", 0],
-            "ipadapter": ["21", 1],
+            "model": [currentModelNode, currentModelOutput],
+            "ipadapter": ["21", 0],
+            "clip_vision": ["22", 0],
             "image": ["20", 0]
           },
-          "class_type": "IPAdapter",
-          "_meta": { "title": "IP-Adapter (Character Consistency)" }
+          "class_type": "IPAdapterAdvanced",
+          "_meta": { "title": "IP-Adapter Advanced (Character Consistency)" }
         };
 
         currentModelNode = "24";
@@ -3138,11 +3182,13 @@
         scope: 'merged', includeRecent: true, includeSpeechPattern: true, includeGlossary: true
       });
       const recentText = getRecentParagraphs(1500);
-      let jb = '';
+      let jbText = '';
       if (state.jailbreakEnabled && state.jailbreakPrompt) {
-        jb = state.jailbreakPrompt + '\n\n---\n\n';
+        jbText = state.jailbreakPrompt;
+      } else {
+        jbText = '(JB無効 → デフォルトペルソナ)';
       }
-      els.reqPromptStoryGen.value = `【System Prompt】\n${jb || '(JB無効)'}\n\n【v5.6 日本語文章版5W1H (merged)】\n${rendered5W1H}\n\n【直前段落 (${recentText.length}文字)】\n${recentText}`;
+      els.reqPromptStoryGen.value = `=== system_instruction ===\n${jbText}\n+ タスク指示（ポーズタグルール等）\n\n=== user contents ===\n【設定情報】\n${rendered5W1H}\n\n【物語 (${recentText.length}文字)】\n${recentText}`;
     }
 
     // v5.6: 旧sanitize=F3のプロンプトプレビュー（ポーズ画像指示文生成用）
@@ -3488,11 +3534,12 @@ name, epithet, species, height, bodyType, skinTone, hairColor, hairStyle, eyeCol
   "why": { "context": "", "glossary": "" },
   "how": { "mood": "", "artStyle": "" }
 }`;
-        dbg('dbgClassifyInput', sys + '\n\n【参考文章】\n' + ref);
+        dbg('dbgClassifyInput', '=== system_instruction ===\n' + sys + '\n\n=== user contents ===\n【参考文章】\n' + ref);
         const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + m.endpoint + ':generateContent?key=' + state.apiKey, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            contents: [{ parts: [{ text: sys + '\n\n【参考文章】\n' + ref }] }],
+            system_instruction: { parts: [{ text: sys }] },
+            contents: [{ role: 'user', parts: [{ text: '【参考文章】\n' + ref }] }],
             generationConfig: {
               temperature: 0.3,
               maxOutputTokens: 8192,
@@ -3692,11 +3739,12 @@ ${base5W1H}
 - 物語に明示されていなくても、文脈から推測できるポーズは記述する
 - 値は全て英語のSD WebUI向けタグ形式で出力`;
 
-        dbg('dbgConvertInput', sys + '\n\n【物語テキスト】\n' + recentText);
+        dbg('dbgConvertInput', '=== system_instruction ===\n' + sys + '\n\n=== user contents ===\n【物語テキスト】\n' + recentText);
         const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + m.endpoint + ':generateContent?key=' + state.apiKey, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            contents: [{ parts: [{ text: sys + '\n\n【物語テキスト】\n' + recentText }] }],
+            system_instruction: { parts: [{ text: sys }] },
+            contents: [{ role: 'user', parts: [{ text: '【物語テキスト】\n' + recentText }] }],
             generationConfig: {
               temperature: 0.3,
               maxOutputTokens: 4096,
@@ -3845,14 +3893,21 @@ ${base5W1H}
         // ★ v5.6: 直前段落のみ送信（トークン節約）
         const recentText = getRecentParagraphs(1500);
 
-        // JailBreakプロンプトを先頭に追加
-        let systemPrompt = '';
+        // ★ v5.6: system_instruction と contents を明確に分離
+        // JBはペルソナを担うため system_instruction へ配置（Geminiが最優先で遵守）
+        // JB無効時はデフォルトペルソナを使用
+        let sysText = '';
         if (state.jailbreakEnabled && state.jailbreakPrompt) {
-          systemPrompt = state.jailbreakPrompt + '\n\n---\n\n';
+          // JBがペルソナを定義済みなので「あなたは〇〇です」を重複させない
+          sysText = state.jailbreakPrompt;
+        } else {
+          sysText = 'あなたは物語作家です。';
         }
 
-        // ポーズタグ出力指示を含む改良版プロンプト
-        systemPrompt += `あなたは物語作家です。設定に基づいて物語の続きを生成し、シーンの状況変化も出力してください。
+        // タスク指示（system_instruction の一部として送信）
+        sysText += `
+
+設定に基づいて物語の続きを生成し、シーンの状況変化も出力してください。
 
 【重要：ポーズ記述ルール】
 キャラクターが動作を行った描写の直後に、必ず以下の形式でポーズ詳細を記載してください：
@@ -3870,9 +3925,6 @@ ${base5W1H}
 例：
 彼女はおるおる一歩前に踏み出した。[アリア:正面向き、両腕を胸の前で軽く組み、右足を一歩前に出して左足に重心、膝はやや曲げ気味、肩は少し内側に入り緊張した様子、顔は正面やや下向き、視線は足元、不安げで躊躇う雰囲気]
 
-【設定情報】
-${rendered5W1H}
-
 【出力形式】JSON:
 {
   "story": "続きの物語（日本語、ポーズタグを含む）",
@@ -3885,8 +3937,11 @@ ${rendered5W1H}
   }
 }`;
 
-        // ★ 実送信プロンプトを確認欄に格納
-        const fullStoryPrompt = systemPrompt + '\n\n【物語】\n' + recentText;
+        // ★ ユーザーコンテンツ = 設定情報 + 直前段落（データのみ）
+        const userContent = '【設定情報】\n' + rendered5W1H + '\n\n【物語】\n' + recentText;
+
+        // デバッグ表示
+        const fullStoryPrompt = '=== system_instruction ===\n' + sysText + '\n\n=== user contents ===\n' + userContent;
         dbg('dbgStoryInput', fullStoryPrompt);
         if (els.reqPromptStoryGen) {
           els.reqPromptStoryGen.value = fullStoryPrompt;
@@ -3895,7 +3950,8 @@ ${rendered5W1H}
         const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + m.endpoint + ':generateContent?key=' + state.apiKey, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            contents: [{ parts: [{ text: fullStoryPrompt }] }],
+            system_instruction: { parts: [{ text: sysText }] },
+            contents: [{ role: 'user', parts: [{ text: userContent }] }],
             generationConfig: { temperature: 0.9, maxOutputTokens: 8192 },
             safetySettings: [
               { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
@@ -4090,12 +4146,15 @@ ${rendered5W1H}
                 addLog('🎭 F6 LoRA適用: ' + f6Lora, 'info');
               }
 
+              // ★ F6のnegative出力を保持（ComfyUI/SD WebUIに渡す）
+              const f6Negative = f6Result?.negative || '';
+
               // F7: ComfyUI / SD WebUI で画像生成
               if (state.runpodConnected) {
                 addLog('🦄 F7 RunPod Pony (EN): ' + usedPrompt.substring(0, 60) + '...', 'info');
                 if (refImage) addLog('🖼️ → IP-Adapter: 参照画像でキャラ一貫性', 'info');
                 if (sanitizedPoseImage) addLog('🦴 → ControlNet: F4ポーズ設計図でポーズ制御', 'info');
-                img = await generateWithRunPodComfyUI(usedPrompt, refImage, sanitizedPoseImage);
+                img = await generateWithRunPodComfyUI(usedPrompt, refImage, sanitizedPoseImage, f6Negative);
                 usedEngine = 'RunPod Pony V6' +
                   (refImage ? ' +IP-Adapter' : '') +
                   (sanitizedPoseImage ? ' +ControlNet' : '');
@@ -4103,7 +4162,7 @@ ${rendered5W1H}
                 addLog('🎨 F7 SD WebUI (EN): ' + usedPrompt.substring(0, 60) + '...', 'info');
                 if (refImage) addLog('🖼️ → img2img: 参照画像でキャラ一貫性', 'info');
                 if (sanitizedPoseImage) addLog('🦴 → ControlNet: F4ポーズ設計図でポーズ制御', 'info');
-                img = await generateWithSDWebUI(usedPrompt, refImage, sanitizedPoseImage);
+                img = await generateWithSDWebUI(usedPrompt, refImage, sanitizedPoseImage, f6Negative);
                 const hasRef = state.sdSettings.useImg2Img && refImage;
                 usedEngine = 'SD ' + (hasRef ? 'img2img' : 'txt2img') +
                   (sanitizedPoseImage ? ' +ControlNet' : '');
@@ -4183,12 +4242,10 @@ ${rendered5W1H}
       }).join('\n');
 
       const sanitizePrompt = state.sanitizeJailbreakPrompt || JAILBREAK_SANITIZE_PROMPT;
-      const systemPrompt = `${sanitizePrompt}
+      // ★ v5.6: system_instruction = 健全化JB + ルール（行動規範）
+      const f3SysText = `${sanitizePrompt}
 
 【タスク】以下のキャラクター情報から、アニメイラスト風の画像生成用の日本語指示文を生成してください。
-
-【対象キャラクターの外見・ポーズ情報】
-${charSummary}
 
 【ルール】
 - ポーズ情報は一切省略・要約せず全て含める
@@ -4197,16 +4254,20 @@ ${charSummary}
 - 出力はプレーンテキストの指示文のみ（JSONではない）
 - 参考画像がある場合、外見はそちらを参照する旨を明記`;
 
+      // ★ contents = キャラデータのみ
+      const f3UserContent = '【対象キャラクターの外見・ポーズ情報】\n' + charSummary;
+
       try {
         const m = MODELS.text[state.selectedTextModel];
         // 実送信プロンプトを確認欄に格納
-        if (els.reqPromptSanitize) els.reqPromptSanitize.value = systemPrompt;
-        dbg('dbgSanitizeInput', systemPrompt);
+        if (els.reqPromptSanitize) els.reqPromptSanitize.value = '=== system_instruction ===\n' + f3SysText + '\n\n=== user contents ===\n' + f3UserContent;
+        dbg('dbgSanitizeInput', '=== system_instruction ===\n' + f3SysText + '\n\n=== user contents ===\n' + f3UserContent);
 
         const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + m.endpoint + ':generateContent?key=' + state.apiKey, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            contents: [{ parts: [{ text: systemPrompt }] }],
+            system_instruction: { parts: [{ text: f3SysText }] },
+            contents: [{ role: 'user', parts: [{ text: f3UserContent }] }],
             generationConfig: { temperature: 0.3, maxOutputTokens: 4096 },
             safetySettings: [
               { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
@@ -4306,13 +4367,10 @@ ${recentText}`;
       const poseFromTag = state.poseRecords[char.base.name] || null;
       const poseInfo = poseFromTag || char.recent.currentPose || '';
 
-      const sys = `あなたはStable Diffusion（Pony Diffusion V6 XL）向けの英語プロンプトジェネレーターです。
+      // ★ v5.6: system_instruction = ペルソナ + ルール + 出力形式
+      const f6SysText = `あなたはStable Diffusion（Pony Diffusion V6 XL）向けの英語プロンプトジェネレーターです。
 
-以下の日本語キャラクター情報から、高品質なSDプロンプトを生成してください。
-
-${rendered5W1H}
-
-${poseInfo ? '【ポーズ情報】\n' + poseInfo : ''}
+日本語キャラクター情報から、高品質なSDプロンプトを生成してください。
 
 【出力形式】JSON:
 {
@@ -4328,12 +4386,16 @@ ${poseInfo ? '【ポーズ情報】\n' + poseInfo : ''}
 - キャラの性別・種族特徴（獣耳、尻尾等）を必ず含める
 - JSONのみを出力`;
 
+      // ★ contents = キャラデータ + ポーズ情報
+      const f6UserContent = rendered5W1H + (poseInfo ? '\n\n【ポーズ情報】\n' + poseInfo : '');
+
       try {
         const m = MODELS.text[state.selectedTextModel];
         const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + m.endpoint + ':generateContent?key=' + state.apiKey, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            contents: [{ parts: [{ text: sys }] }],
+            system_instruction: { parts: [{ text: f6SysText }] },
+            contents: [{ role: 'user', parts: [{ text: f6UserContent }] }],
             generationConfig: { temperature: 0.3, maxOutputTokens: 2048, responseMimeType: 'application/json' },
             safetySettings: [
               { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
@@ -4455,7 +4517,14 @@ ${poseInfo ? '【ポーズ情報】\n' + poseInfo : ''}
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents,
-          generationConfig: { responseModalities: ['TEXT', 'IMAGE'] }
+          generationConfig: { responseModalities: ['TEXT', 'IMAGE'] },
+          safetySettings: [
+            { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_CIVIC_INTEGRITY', threshold: 'BLOCK_NONE' }
+          ]
         })
       });
 
@@ -4563,7 +4632,7 @@ ${poseInfo ? '【ポーズ情報】\n' + poseInfo : ''}
     // ★ SD WebUI画像生成（参照画像 + 設計図画像の同時使用対応）
     // 修正: 以前は参照画像と設計図のどちらか一方しか使えなかった
     //  → img2img(参照画像でキャラ一貫性) + ControlNet拡張(設計図でポーズ制御) を同時使用
-    async function generateWithSDWebUI(scenePrompt, referenceImage = null, poseImage = null) {
+    async function generateWithSDWebUI(scenePrompt, referenceImage = null, poseImage = null, f6Negative = '') {
       // LoRA（手動 + 自動検出）
       let loraPart = state.sdSettings.lora ? state.sdSettings.lora.trim() : '';
       if (state.autoDetectedLora) {
@@ -4575,9 +4644,13 @@ ${poseInfo ? '【ポーズ情報】\n' + poseInfo : ''}
       const hasReference = state.sdSettings.useImg2Img && referenceImage;
       const hasPoseImage = !!poseImage;
 
+      // ★ F6のnegativeがあればマージ
+      const baseNeg = state.sdSettings.negativePrompt || SD_DEFAULTS.negativePrompt;
+      const fullNegative = f6Negative ? f6Negative + ', ' + baseNeg : baseNeg;
+
       const payload = {
         prompt: fullPrompt,
-        negative_prompt: state.sdSettings.negativePrompt,
+        negative_prompt: fullNegative,
         sampler_name: state.sdSettings.sampler,
         steps: parseInt(state.sdSettings.steps),
         cfg_scale: parseFloat(state.sdSettings.cfg),
@@ -4653,7 +4726,17 @@ ${poseInfo ? '【ポーズ情報】\n' + poseInfo : ''}
       }
       const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + mi.endpoint + ':generateContent?key=' + state.apiKey, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents, generationConfig: { responseModalities: ['TEXT', 'IMAGE'] } })
+        body: JSON.stringify({
+          contents,
+          generationConfig: { responseModalities: ['TEXT', 'IMAGE'] },
+          safetySettings: [
+            { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_CIVIC_INTEGRITY', threshold: 'BLOCK_NONE' }
+          ]
+        })
       });
       if (!res.ok) throw new Error('Image API Error');
       const data = await res.json();
