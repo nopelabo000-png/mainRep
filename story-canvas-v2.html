@@ -55,7 +55,7 @@
       <div class="header-controls">
         <div class="api-section">
           <input type="password" id="apiKeyInput" class="api-input" placeholder="Gemini API Key">
-          <button id="saveApiKeyBtn" class="api-btn">設定</button>
+          <button id="saveApiKeyBtn" type="button" class="api-btn" onclick="if(typeof saveApiKey==='function')saveApiKey();else console.error('saveApiKey未定義');">設定</button>
           <div id="statusDot" class="status-dot"></div>
         </div>
         <div class="model-selector">
@@ -135,7 +135,7 @@
         </div>
         <div class="api-section" id="openrouterSection">
           <input type="password" id="openrouterApiKey" class="api-input" placeholder="OpenRouter API Key" style="width:160px;">
-          <button id="saveOpenrouterKeyBtn" class="api-btn">🌐</button>
+          <button id="saveOpenrouterKeyBtn" type="button" class="api-btn" onclick="if(typeof saveOpenrouterKey==='function')saveOpenrouterKey();else console.error('saveOpenrouterKey未定義');">🌐 設定</button>
           <div id="openrouterStatusDot" class="status-dot"></div>
         </div>
       </div>

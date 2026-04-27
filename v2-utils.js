@@ -210,62 +210,89 @@ async function textApiFetch(body, label, modelKeyOverride) {
 // ============================================================
 
 function saveApiKey() {
-  if (!els.apiKeyInput) {
-    addLog('❌ apiKeyInput 要素が見つかりません', 'error');
-    showMessage('❌ APIキー入力欄が見つかりません', 'error');
-    return;
+  try {
+    var input = els.apiKeyInput || document.getElementById('apiKeyInput');
+    if (!input) {
+      console.error('[saveApiKey] apiKeyInput 要素が見つかりません');
+      if (typeof addLog === 'function') addLog('❌ apiKeyInput 要素が見つかりません', 'error');
+      if (typeof showMessage === 'function') showMessage('❌ APIキー入力欄が見つかりません', 'error');
+      return;
+    }
+    var raw = input.value.trim();
+    if (!raw) {
+      state.apiKey = '';
+      state.apiKeys = [];
+      if (typeof updateAPIStatus === 'function') updateAPIStatus();
+      if (typeof saveToStorage === 'function') saveToStorage();
+      addLog('⚠️ Gemini APIキーが空です', 'warning');
+      showMessage('❌ Gemini APIキーを入力してください', 'error');
+      return;
+    }
+    var keys = raw.split(/[,\s]+/).map(function(k) { return k.trim(); }).filter(function(k) { return k.length >= 8; });
+    if (keys.length === 0) {
+      addLog('⚠️ Gemini APIキーが短すぎます（8文字以上必須）', 'warning');
+      showMessage('❌ APIキーが短すぎます (8文字以上必須)', 'error');
+      return;
+    }
+    state.apiKey = keys[0];
+    state.apiKeys = keys;
+    if (typeof updateAPIStatus === 'function') updateAPIStatus();
+    if (typeof saveToStorage === 'function') saveToStorage();
+    addLog('🔑 Gemini APIキー設定完了: ' + keys.length + '個', 'success');
+    showMessage('✅ Gemini APIキー設定完了 (' + keys.length + '個)', 'success');
+  } catch (e) {
+    console.error('[saveApiKey] 例外:', e);
+    if (typeof addLog === 'function') addLog('❌ saveApiKey 例外: ' + e.message, 'error');
+    if (typeof showMessage === 'function') showMessage('❌ 設定に失敗: ' + e.message, 'error');
   }
-  const raw = els.apiKeyInput.value.trim();
-  if (!raw) {
-    state.apiKey = '';
-    state.apiKeys = [];
-    updateAPIStatus();
-    saveToStorage();
-    addLog('⚠️ Gemini APIキーが空です', 'warning');
-    showMessage('❌ Gemini APIキーを入力してください', 'error');
-    return;
-  }
-  const keys = raw.split(/[,\s]+/).map(k => k.trim()).filter(k => k.length >= 8);
-  if (keys.length === 0) {
-    addLog('⚠️ Gemini APIキーが短すぎます（8文字以上必須）', 'warning');
-    showMessage('❌ APIキーが短すぎます (8文字以上必須)', 'error');
-    return;
-  }
-  state.apiKey = keys[0];
-  state.apiKeys = keys;
-  updateAPIStatus();
-  saveToStorage();
-  addLog('🔑 Gemini APIキー設定完了: ' + keys.length + '個', 'success');
-  showMessage('✅ Gemini APIキー設定完了 (' + keys.length + '個)', 'success');
 }
 
 function saveOpenrouterKey() {
-  if (!els.openrouterApiKey) {
-    addLog('❌ openrouterApiKey 要素が見つかりません', 'error');
-    showMessage('❌ OpenRouterキー入力欄が見つかりません', 'error');
-    return;
+  try {
+    // els 経由か直接 DOM 取得 (els 未初期化でも動くよう二重保険)
+    var input = (typeof els !== 'undefined' && els.openrouterApiKey) || document.getElementById('openrouterApiKey');
+    if (!input) {
+      console.error('[saveOpenrouterKey] openrouterApiKey 要素が見つかりません');
+      if (typeof addLog === 'function') addLog('❌ openrouterApiKey 要素が見つかりません', 'error');
+      if (typeof showMessage === 'function') showMessage('❌ OpenRouterキー入力欄が見つかりません', 'error');
+      return;
+    }
+    var key = input.value.trim();
+    if (!key) {
+      state.openrouterApiKey = '';
+      state.openrouterReady = false;
+      if (typeof updateAPIStatus === 'function') updateAPIStatus();
+      if (typeof saveToStorage === 'function') saveToStorage();
+      addLog('⚠️ OpenRouter APIキーが空です', 'warning');
+      showMessage('❌ OpenRouter APIキーを入力してください', 'error');
+      return;
+    }
+    if (key.length < 8) {
+      addLog('⚠️ OpenRouter APIキーが短すぎます（8文字以上必須）', 'warning');
+      showMessage('❌ OpenRouter APIキーが短すぎます (8文字以上必須)', 'error');
+      return;
+    }
+    state.openrouterApiKey = key;
+    state.openrouterReady = true;
+    if (typeof updateAPIStatus === 'function') updateAPIStatus();
+    if (typeof saveToStorage === 'function') saveToStorage();
+    // ステータスドットを念のため直接更新（updateAPIStatusが何らかの理由で空振りしても緑になる）
+    var dot = document.getElementById('openrouterStatusDot');
+    if (dot) dot.classList.add('ready');
+    addLog('🌐 OpenRouter APIキー設定完了', 'success');
+    showMessage('✅ OpenRouter APIキー設定完了', 'success');
+    console.log('[saveOpenrouterKey] OK');
+  } catch (e) {
+    console.error('[saveOpenrouterKey] 例外:', e);
+    if (typeof addLog === 'function') addLog('❌ saveOpenrouterKey 例外: ' + e.message, 'error');
+    if (typeof showMessage === 'function') showMessage('❌ OpenRouter設定に失敗: ' + e.message, 'error');
   }
-  var key = els.openrouterApiKey.value.trim();
-  if (!key) {
-    state.openrouterApiKey = '';
-    state.openrouterReady = false;
-    updateAPIStatus();
-    saveToStorage();
-    addLog('⚠️ OpenRouter APIキーが空です', 'warning');
-    showMessage('❌ OpenRouter APIキーを入力してください', 'error');
-    return;
-  }
-  if (key.length < 8) {
-    addLog('⚠️ OpenRouter APIキーが短すぎます（8文字以上必須）', 'warning');
-    showMessage('❌ OpenRouter APIキーが短すぎます (8文字以上必須)', 'error');
-    return;
-  }
-  state.openrouterApiKey = key;
-  state.openrouterReady = true;
-  updateAPIStatus();
-  saveToStorage();
-  addLog('🌐 OpenRouter APIキー設定完了', 'success');
-  showMessage('✅ OpenRouter APIキー設定完了', 'success');
+}
+
+// グローバル公開（HTML inline onclick から確実に呼べるように）
+if (typeof window !== 'undefined') {
+  window.saveApiKey = saveApiKey;
+  window.saveOpenrouterKey = saveOpenrouterKey;
 }
 
 function isTextReady() {

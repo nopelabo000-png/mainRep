@@ -105,8 +105,7 @@ function init() {
 
 function setupEventListeners() {
   // API設定
-  if (els.saveApiKeyBtn) els.saveApiKeyBtn.addEventListener('click', saveApiKey);
-  if (els.saveOpenrouterKeyBtn) els.saveOpenrouterKeyBtn.addEventListener('click', saveOpenrouterKey);
+  // ※ saveApiKey / saveOpenrouterKey は HTML 側の onclick から直接呼ばれる (fail-safe)
   if (els.textModel) els.textModel.addEventListener('change', function(e) { state.selectedTextModel = e.target.value; saveToStorage(); });
   if (els.imageModel) els.imageModel.addEventListener('change', function(e) { state.selectedImageModel = e.target.value; saveToStorage(); });
   if (els.ttsModel) els.ttsModel.addEventListener('change', function(e) { state.selectedTTSModel = e.target.value; saveToStorage(); });
