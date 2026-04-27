@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Story Canvas v2 - 骨組み駆動パイプライン</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="story-canvas.css?v=2">
+  <style>
+    /* v2固有の追加スタイル */
+    .skeleton-viewer { background: rgba(0,0,0,0.2); border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem; margin-bottom: 0.5rem; max-height: 400px; overflow-y: auto; }
+    .skeleton-event { padding: 0.4rem; margin-bottom: 0.3rem; border-left: 3px solid var(--primary); background: rgba(147,112,219,0.08); border-radius: 0 4px 4px 0; font-size: 0.75rem; }
+    .skeleton-event .event-tag { color: var(--accent); font-weight: bold; font-size: 0.7rem; }
+    .skeleton-event .event-cause { color: var(--text-muted); font-size: 0.65rem; }
+    .skeleton-event .chain-entry { margin: 0.2rem 0; padding-left: 0.5rem; border-left: 2px solid rgba(255,255,255,0.1); }
+    .skeleton-event .chain-char { color: var(--warning); font-weight: 500; }
+    .skeleton-event .chain-env { color: #4caf50; font-weight: 500; }
+    .skeleton-event .player-required { color: #ff5252; font-weight: bold; background: rgba(255,82,82,0.15); padding: 0.2rem 0.4rem; border-radius: 4px; }
+    .char-text-tabs { display: flex; gap: 2px; background: rgba(0,0,0,0.2); border-radius: 6px; padding: 2px; margin-bottom: 0.5rem; flex-wrap: wrap; }
+    .char-text-tab { flex: 1; min-width: 60px; padding: 0.3rem; font-size: 0.7rem; border: none; border-radius: 4px; cursor: pointer; background: transparent; color: var(--text-secondary); }
+    .char-text-tab.active { background: var(--primary); color: white; }
+    .char-text-content { display: none; background: rgba(0,0,0,0.15); border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem; max-height: 500px; overflow-y: auto; font-size: 0.8rem; line-height: 1.7; }
+    .char-text-content.active { display: block; }
+    .char-text-paragraph { margin-bottom: 0.8rem; }
+    .char-text-paragraph .para-tag { color: var(--accent); font-size: 0.7rem; font-weight: bold; }
+    #playerInputPanel, #playerEditPanel { background: rgba(255,215,0,0.08); border: 2px solid rgba(255,215,0,0.4); border-radius: 8px; padding: 0.75rem; margin: 0.5rem 0; }
+    #playerInputPanel textarea, #playerEditPanel textarea { width: 100%; min-height: 120px; font-size: 0.85rem; background: rgba(0,0,0,0.3); border: 1px solid var(--border); border-radius: 4px; padding: 0.5rem; color: var(--text-primary); resize: vertical; font-family: 'Noto Sans JP', sans-serif; }
+    .pipeline-status { display: inline-block; font-size: 0.7rem; padding: 0.15rem 0.5rem; border-radius: 10px; margin-left: 0.5rem; }
+    .pipeline-status.idle { background: rgba(255,255,255,0.1); color: var(--text-muted); }
+    .pipeline-status.running { background: rgba(147,112,219,0.3); color: var(--primary); animation: pulse 1.5s infinite; }
+    .pipeline-status.waiting { background: rgba(255,215,0,0.3); color: #ffd700; }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+    .writer-mode-toggle { margin-top: 0.3rem; padding: 0.3rem; background: rgba(0,0,0,0.15); border-radius: 4px; display: flex; align-items: center; gap: 0.4rem; }
+    .writer-mode-toggle select { padding: 0.2rem 0.4rem; font-size: 0.7rem; background: rgba(0,0,0,0.3); border: 1px solid var(--border); border-radius: 4px; color: var(--text-primary); }
+    .context-display { background: rgba(0,0,0,0.2); border: 1px solid var(--border); border-radius: 4px; padding: 0.5rem; margin-bottom: 0.5rem; max-height: 200px; overflow-y: auto; font-size: 0.75rem; color: var(--text-secondary); }
+    .skeleton-ref { background: rgba(147,112,219,0.08); border: 1px solid rgba(147,112,219,0.3); border-radius: 4px; padding: 0.5rem; margin-bottom: 0.5rem; font-size: 0.75rem; }
+    .btn-primary { background: var(--primary); color: white; border: none; padding: 0.4rem 1rem; border-radius: 4px; cursor: pointer; font-size: 0.8rem; }
+    .btn-primary:hover { opacity: 0.9; }
+    .btn-secondary { background: transparent; color: var(--text-secondary); border: 1px solid var(--border); padding: 0.4rem 0.8rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem; }
+    .scene-selector { display: flex; gap: 0.3rem; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; }
+    .scene-selector button { padding: 0.2rem 0.5rem; font-size: 0.7rem; border-radius: 4px; cursor: pointer; border: 1px solid var(--border); background: rgba(0,0,0,0.2); color: var(--text-secondary); }
+    .scene-selector button.active { background: var(--primary); color: white; border-color: var(--primary); }
+  </style>
+</head>
+
+<body>
+  <!-- ===== HEADER (v5.6互換) ===== -->
+  <header class="app-header" id="appHeader">
+    <div class="header-content">
+      <div class="logo-section">
+        <h1>🎨 Story Canvas</h1>
+        <span class="version-badge">v2 骨組み駆動</span>
+      </div>
+      <div class="header-controls">
+        <div class="api-section">
+          <input type="password" id="apiKeyInput" class="api-input" placeholder="Gemini API Key">
+          <button id="saveApiKeyBtn" class="api-btn">設定</button>
+          <div id="statusDot" class="status-dot"></div>
+        </div>
+        <div class="model-selector">
+          <label>📝 Text:</label>
+          <select id="textModel">
+            <optgroup label="── Gemini ──">
+              <option value="gemini-3.1-pro">3.1 Pro (最新)</option>
+              <option value="gemini-3.1-flash-lite">3.1 Flash Lite</option>
+              <option value="gemini-3-flash">3 Flash</option>
+              <option value="gemini-2.5-pro">2.5 Pro</option>
+              <option value="gemini-2.5-flash">2.5 Flash</option>
+              <option value="gemini-2.5-flash-lite">2.5 Flash Lite</option>
+              <option value="gemini-2.0-flash">2 Flash</option>
+              <option value="gemini-2.0-flash-lite">2 Flash Lite</option>
+            </optgroup>
+            <optgroup label="── Gemma ──">
+              <option value="gemma-4-31b">Gemma 4 31B</option>
+              <option value="gemma-4-26b">Gemma 4 26B</option>
+              <option value="gemma-3-27b">Gemma 3 27B</option>
+              <option value="gemma-3-12b">Gemma 3 12B</option>
+              <option value="gemma-3-4b">Gemma 3 4B</option>
+              <option value="gemma-3-2b">Gemma 3 2B</option>
+              <option value="gemma-3-1b">Gemma 3 1B</option>
+            </optgroup>
+            <optgroup label="── OpenRouter (Free) ──">
+              <option value="or-gemma-4-31b">🌐 Gemma 4 31B (Free)</option>
+              <option value="or-gemma-4-26b">🌐 Gemma 4 26B-A4B (Free)</option>
+              <option value="or-ling-2.6-1t">🌐 Ling 2.6 1T MoE (Free)</option>
+              <option value="or-ling-2.6-flash">🌐 Ling 2.6 Flash (Free)</option>
+              <option value="or-hy3-preview">🌐 Tencent Hy3 Preview (Free)</option>
+              <option value="or-nemotron-3-super">🌐 NVIDIA Nemotron-3 120B (Free)</option>
+              <option value="or-minimax-m2.5">🌐 MiniMax M2.5 (Free)</option>
+              <option value="or-free-router">🌐 Free Auto Router</option>
+            </optgroup>
+          </select>
+        </div>
+        <div class="model-selector">
+          <label>🎨 Image:</label>
+          <select id="imageModel">
+            <optgroup label="── Nano Banana ──">
+              <option value="gemini-3.1-flash-image">Nano Banana 2 (3.1 Flash)</option>
+              <option value="gemini-3-pro-image-preview">Nano Banana Pro (3 Pro)</option>
+              <option value="gemini-2.5-flash-image">Nano Banana (2.5 Flash)</option>
+            </optgroup>
+            <optgroup label="── OpenRouter (有料) ──">
+              <option value="or-gemini-3.1-flash-image">🌐 Nano Banana 2 (有料)</option>
+              <option value="or-gpt-5.4-image-2">🌐 GPT-5.4 Image 2 (有料)</option>
+            </optgroup>
+            <optgroup label="── Imagen 4 (Vertex AI専用) ──" disabled>
+              <option disabled>※ Vertex AI OAuth認証が必要</option>
+            </optgroup>
+          </select>
+        </div>
+        <div class="model-selector">
+          <label>🔊 TTS:</label>
+          <select id="ttsModel">
+            <option value="gemini-2.5-flash-tts">2.5 Flash TTS</option>
+            <option value="gemini-2.5-pro-tts">2.5 Pro TTS</option>
+          </select>
+        </div>
+        <div class="model-selector">
+          <label>📐 Embed:</label>
+          <select id="embeddingModel">
+            <option value="gemini-embedding-1">Gemini Embedding 1</option>
+          </select>
+        </div>
+        <div class="api-section" id="sdWebuiSection">
+          <input type="text" id="sdWebuiUrl" class="api-input" placeholder="SD WebUI URL" style="width:200px;">
+          <button id="connectSDBtn" class="api-btn">接続</button>
+          <div id="sdStatusDot" class="status-dot"></div>
+        </div>
+        <div class="api-section" id="runpodSection">
+          <input type="password" id="runpodApiKey" class="api-input" placeholder="RunPod API Key" style="width:140px;">
+          <input type="text" id="runpodEndpointId" class="api-input" placeholder="Endpoint ID" style="width:120px;">
+          <button id="connectRunpodBtn" class="api-btn">🚀</button>
+          <div id="runpodStatusDot" class="status-dot"></div>
+        </div>
+        <div class="api-section" id="openrouterSection">
+          <input type="password" id="openrouterApiKey" class="api-input" placeholder="OpenRouter API Key" style="width:160px;">
+          <button id="saveOpenrouterKeyBtn" class="api-btn">🌐</button>
+          <div id="openrouterStatusDot" class="status-dot"></div>
+        </div>
+      </div>
+    </div>
+  </header>
+  <button class="header-toggle-btn" id="headerToggleBtn" title="ヘッダーを隠す">▲</button>
+
+  <!-- ===== MAIN 3-PANEL LAYOUT ===== -->
+  <main class="main-layout" id="storyCanvasMain" data-active-characters="" data-current-camera="overview"
+    data-aspect-ratio="16:9" data-prompt-ready="false" data-last-modified="">
+
+    <!-- ===== PANEL 1: 設定 (v5.6ベース) ===== -->
+    <div class="panel panel-settings">
+      <div class="panel-header">
+        <h3>📍 状況設定 (5W1H)</h3>
+      </div>
+      <div class="panel-content">
+        <!-- JailBreak設定 -->
+        <div class="situation-section" id="jailbreakSection">
+          <div class="section-header">
+            <h4><span class="collapse-icon">▼</span> 🔓 JailBreak <span class="badge">脱獄</span></h4>
+            <div class="toggle-switch active" id="jbToggle"></div>
+          </div>
+          <div class="section-body">
+            <div style="display:flex;gap:2px;margin-bottom:0.5rem;background:rgba(0,0,0,0.2);border-radius:6px;padding:2px;">
+              <button class="jb-tab active" data-jb-tab="story" style="flex:1;padding:0.3rem;font-size:0.7rem;border:none;border-radius:4px;cursor:pointer;background:var(--primary);color:white;">📖 物語生成</button>
+              <button class="jb-tab" data-jb-tab="sanitize" style="flex:1;padding:0.3rem;font-size:0.7rem;border:none;border-radius:4px;cursor:pointer;background:transparent;color:var(--text-secondary);">🖼️ 健全化</button>
+            </div>
+            <div class="jb-tab-content active" data-jb-content="story">
+              <p style="font-size:0.65rem;color:var(--text-muted);margin-bottom:0.3rem;">Step 2 本文生成で使用</p>
+              <div class="situation-field">
+                <label>プリセット選択</label>
+                <select id="jbPreset" style="width:100%;padding:0.4rem;background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);font-size:0.8rem;">
+                  <option value="standard">標準</option>
+                  <option value="creative">創作特化</option>
+                  <option value="roleplay">RP特化</option>
+                  <option value="custom">カスタム</option>
+                </select>
+              </div>
+              <div class="situation-field">
+                <label>System Prompt (編集可能)</label>
+                <textarea id="jbPromptText" style="min-height:120px;font-family:monospace;font-size:0.75rem;"></textarea>
+              </div>
+            </div>
+            <div class="jb-tab-content" data-jb-content="sanitize" style="display:none;">
+              <p style="font-size:0.65rem;color:var(--text-muted);margin-bottom:0.3rem;">ポーズ画像生成時の健全化で使用</p>
+              <div class="situation-field">
+                <label>健全化プロンプト (編集可能)</label>
+                <textarea id="sanitizeJbPromptText" style="min-height:120px;font-family:monospace;font-size:0.75rem;"></textarea>
+              </div>
+              <button id="resetSanitizeJbBtn" class="story-btn secondary" style="font-size:0.7rem;padding:0.3rem 0.6rem;margin-top:0.3rem;">デフォルトに戻す</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- SD WebUI設定 -->
+        <div class="situation-section" id="sdSettingsSection">
+          <div class="section-header">
+            <h4><span class="collapse-icon">▼</span> 🎨 SD設定 <span class="badge">画像</span></h4>
+          </div>
+          <div class="section-body collapsed" id="sdSettingsBody">
+            <!-- SD設定はv2-ui.jsで動的レンダリング -->
+          </div>
+        </div>
+
+        <!-- 5W1Hセクション（v5.6互換 — renderAllSections()で描画） -->
+        <div id="situationSections"></div>
+
+        <!-- キャラクター -->
+        <div class="situation-section" id="characterSection">
+          <div class="section-header">
+            <h4><span class="collapse-icon">▼</span> 👥 キャラクター <span class="badge" id="charBadge">0人</span></h4>
+          </div>
+          <div class="section-body">
+            <div id="characterList"></div>
+            <button id="addCharBtn" class="story-btn secondary" style="width:100%;margin-top:0.5rem;">＋ キャラ追加</button>
+          </div>
+        </div>
+
+        <!-- F8 参考文章 -->
+        <div class="situation-section" id="classifySection">
+          <div class="section-header">
+            <h4><span class="collapse-icon">▶</span> 📄 参考文章 → 設定追記 <span class="badge">F8</span></h4>
+          </div>
+          <div class="section-body collapsed">
+            <textarea id="referenceText" style="min-height:200px;font-size:0.8rem;" placeholder="参考文章を貼り付けてください..."></textarea>
+            <button id="classifyBtn" class="story-btn primary" style="width:100%;margin-top:0.5rem;">📄 解析→基本設定追記 (F8)</button>
+            <div style="margin-top:0.5rem;display:flex;gap:0.3rem;">
+              <button id="exportSettingsBtn" class="story-btn secondary" style="flex:1;font-size:0.7rem;">📋 設定エクスポート</button>
+              <button id="clearBaseBtn" class="story-btn secondary" style="flex:1;font-size:0.7rem;background:rgba(255,80,80,0.15);border:1px solid rgba(255,80,80,0.3);">🗑️ 基本設定クリア</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== PANEL 2: ストーリー (v2新設計) ===== -->
+    <div class="panel panel-story">
+      <div class="panel-header">
+        <h3>📖 ストーリー</h3>
+        <span id="pipelineStatus" class="pipeline-status idle">待機中</span>
+      </div>
+      <div class="panel-content">
+        <!-- パイプライン制御 -->
+        <div class="story-controls">
+          <button id="generateBtn" class="story-btn primary">✨ 生成開始</button>
+          <button id="convertToPromptBtn" class="story-btn secondary">🔄 文章→直近設定</button>
+        </div>
+
+        <!-- シーン選択 -->
+        <div class="scene-selector" id="sceneSelector">
+          <span style="font-size:0.75rem;color:var(--text-secondary);">📍 Scene:</span>
+          <button class="active" data-scene="A">A</button>
+          <button id="newSceneBtn" style="background:rgba(76,175,80,0.15);border:1px solid rgba(76,175,80,0.35);">+ 新シーン</button>
+          <button id="deleteSceneBtn" style="background:rgba(255,80,80,0.15);border:1px solid rgba(255,80,80,0.35);color:rgba(255,80,80,0.8);font-size:0.7rem;">🗑️ 削除</button>
+        </div>
+
+        <!-- 骨組みビューア -->
+        <div class="situation-section" id="skeletonSection">
+          <div class="section-header">
+            <h4><span class="collapse-icon">▼</span> 🦴 骨組み（連鎖反応）</h4>
+          </div>
+          <div class="section-body">
+            <div id="skeletonViewer" class="skeleton-viewer">
+              <p style="font-size:0.75rem;color:var(--text-muted);text-align:center;padding:1rem;">生成するとここに骨組みが表示されます</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- キャラクター本文タブ -->
+        <div class="situation-section" id="charTextSection">
+          <div class="section-header">
+            <h4><span class="collapse-icon">▼</span> 📝 キャラクター本文</h4>
+          </div>
+          <div class="section-body">
+            <div id="charTextTabs" class="char-text-tabs">
+              <span style="font-size:0.7rem;color:var(--text-muted);padding:0.3rem;">キャラクターなし</span>
+            </div>
+            <div id="charTextContents">
+              <!-- 各キャラのタブコンテンツが動的に挿入 -->
+            </div>
+          </div>
+        </div>
+
+        <!-- プレイヤー入力パネル（常時表示） -->
+        <div id="playerInputPanel">
+          <h4 style="font-size:0.85rem;margin-bottom:0.4rem;">🎮 プレイヤー入力</h4>
+          <div id="playerContextDisplay" class="context-display" style="display:none;">
+            <!-- 直近の骨組みイベントを時系列で表示 -->
+          </div>
+          <textarea id="playerInputText" rows="6"
+            placeholder="行動・台詞・展開指示・環境変更を入力&#10;例: 「リリスは剣を構えた」「雷鳴が轟く」「酒場で情報収集させたい」&#10;プロローグの場合は冒頭の展開を記述"></textarea>
+          <div style="display:flex;gap:0.3rem;margin-top:0.4rem;">
+            <button id="playerSubmitBtn" class="btn-primary" style="flex:1;">📝 送信 → 骨組み生成</button>
+          </div>
+          <div id="playerWaitingBadge" style="display:none;margin-top:0.3rem;padding:0.3rem 0.5rem;background:rgba(255,215,0,0.15);border:1px solid rgba(255,215,0,0.4);border-radius:4px;font-size:0.7rem;color:#ffd700;text-align:center;">🎮 プレイヤーの番 — 入力して送信してください</div>
+        </div>
+
+        <!-- プレイヤー本文編集パネル（Step 2で表示） -->
+        <div id="playerEditPanel" style="display:none">
+          <h4 style="font-size:0.85rem;margin-bottom:0.4rem;">📝 <span id="playerEditCharName"></span> の本文を確認・編集</h4>
+          <div id="playerEditSkeleton" class="skeleton-ref"></div>
+          <textarea id="playerEditText" rows="10"></textarea>
+          <div style="display:flex;gap:0.3rem;margin-top:0.4rem;">
+            <button id="playerEditApproveBtn" class="btn-primary">承認</button>
+            <button id="playerEditRegenerateBtn" class="btn-secondary">再整形</button>
+          </div>
+        </div>
+
+        <!-- 直近設定クリア -->
+        <div style="margin-top:0.5rem;padding:0.5rem;background:rgba(255,80,80,0.08);border:1px solid rgba(255,80,80,0.2);border-radius:6px;">
+          <div style="display:flex;align-items:center;gap:0.3rem;margin-bottom:0.3rem;">
+            <span style="font-size:0.75rem;color:var(--text-secondary);">🗑️ 直近設定クリア:</span>
+          </div>
+          <div style="display:flex;gap:0.3rem;flex-wrap:wrap;align-items:center;">
+            <button id="clearAllRecentBtn" class="story-btn secondary" style="font-size:0.65rem;padding:0.25rem 0.5rem;background:rgba(255,80,80,0.15);border:1px solid rgba(255,80,80,0.3);">全直近設定</button>
+            <button id="clearAllCharRecentBtn" class="story-btn secondary" style="font-size:0.65rem;padding:0.25rem 0.5rem;background:rgba(255,80,80,0.15);border:1px solid rgba(255,80,80,0.3);">全キャラ直近</button>
+            <select id="clearCharSelect" style="flex:1;min-width:80px;padding:0.25rem;font-size:0.65rem;background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);">
+              <option value="-1">-- キャラ選択 --</option>
+            </select>
+            <button id="clearCharRecentBtn" class="story-btn secondary" style="font-size:0.65rem;padding:0.25rem 0.5rem;background:rgba(255,80,80,0.15);border:1px solid rgba(255,80,80,0.3);">個別クリア</button>
+          </div>
+        </div>
+
+        <!-- ログ -->
+        <div class="log-section" style="margin-top:0.5rem;">
+          <h4 style="font-size:0.8rem;margin-bottom:0.3rem;">📋 ログ</h4>
+          <div id="logContent" class="log-content"></div>
+        </div>
+        <div id="messageArea" class="message-area"></div>
+
+        <hr style="border:none;border-top:1px solid var(--border-color);margin:0.8rem 0;">
+
+        <!-- カメラアングル -->
+        <div style="margin-top:0.5rem;">
+          <h4 style="font-size:0.85rem;margin-bottom:0.5rem;">📷 カメラアングル</h4>
+          <div id="cameraGrid" class="camera-grid"></div>
+          <button id="generateImagesBtn" class="story-btn secondary" style="width:100%;margin-top:0.5rem;">🎨 撮影</button>
+        </div>
+
+        <hr style="border:none;border-top:1px solid var(--border-color);margin:0.8rem 0;">
+
+        <!-- プロンプトプレビュー -->
+        <div class="final-prompt-section">
+          <h4>🤖 Gemini用プロンプト (全体構図・健全)</h4>
+          <div id="geminiPromptPreview" class="final-prompt-text" style="font-size:0.7rem;max-height:80px;">状況を入力してください...</div>
+        </div>
+        <div class="final-prompt-section" style="margin-top:0.5rem;">
+          <h4>🎨 SD用プロンプト</h4>
+          <select id="sdPreviewCharSelect" style="font-size:0.75rem;padding:0.2rem;margin-bottom:0.3rem;background:var(--card-bg);color:var(--text-primary);border:1px solid var(--border-color);border-radius:4px;">
+            <option value="-1">-- キャラ選択 --</option>
+          </select>
+          <div id="sdPromptPreview" class="final-prompt-text" style="font-size:0.7rem;max-height:80px;">キャラクターを選択...</div>
+          <div id="sdPromptValidation" style="margin-top:0.3rem;font-size:0.7rem;"></div>
+        </div>
+        <div class="final-prompt-section" style="margin-top:0.5rem;">
+          <h4>📋 最終送信プロンプト（直近撮影）</h4>
+          <div id="lastShotDetails" style="font-size:0.65rem;max-height:200px;overflow-y:auto;background:rgba(0,0,0,0.3);border-radius:4px;padding:0.5rem;color:var(--text-secondary);font-family:monospace;white-space:pre-wrap;word-break:break-all;">撮影するとここに完全版プロンプトが表示されます</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== PANEL 3: 撮影 (v5.6互換) ===== -->
+    <div class="panel panel-camera">
+      <div class="panel-header">
+        <h3>📷 撮影パネル</h3><span id="imageCount">0 枚</span>
+      </div>
+      <div class="panel-content">
+        <!-- 要求プロンプト確認 -->
+        <div class="situation-section" id="requestPromptSection">
+          <div class="section-header">
+            <h4><span class="collapse-icon">▼</span> 📝 要求プロンプト確認</h4>
+          </div>
+          <div class="section-body">
+            <div style="display:flex;gap:2px;margin-bottom:0.5rem;background:rgba(0,0,0,0.2);border-radius:6px;padding:2px;">
+              <button class="req-prompt-tab active" data-req-tab="storyGen" style="flex:1;padding:0.3rem;font-size:0.65rem;border:none;border-radius:4px;cursor:pointer;background:var(--primary);color:white;">📖 物語生成</button>
+              <button class="req-prompt-tab" data-req-tab="sanitize" style="flex:1;padding:0.3rem;font-size:0.65rem;border:none;border-radius:4px;cursor:pointer;background:transparent;color:var(--text-secondary);">🖼️ 健全化</button>
+            </div>
+            <div class="req-prompt-content active" data-req-content="storyGen">
+              <p style="font-size:0.65rem;color:var(--text-muted);margin-bottom:0.3rem;">Step 1-2 でAPIに送信されるプロンプト</p>
+              <textarea id="reqPromptStoryGen" style="width:100%;min-height:150px;font-size:0.7rem;font-family:monospace;background:rgba(147,112,219,0.1);border:1px solid var(--primary);border-radius:4px;padding:0.5rem;color:var(--text-primary);resize:vertical;" readonly placeholder="生成実行時に表示されます"></textarea>
+              <div style="display:flex;gap:0.3rem;margin-top:0.3rem;">
+                <button id="refreshStoryGenPromptBtn" class="story-btn secondary" style="flex:1;font-size:0.65rem;padding:0.3rem;">🔄 更新</button>
+                <button id="copyStoryGenPromptBtn" class="story-btn secondary" style="font-size:0.65rem;padding:0.3rem 0.5rem;">📋</button>
+              </div>
+            </div>
+            <div class="req-prompt-content" data-req-content="sanitize" style="display:none;">
+              <p style="font-size:0.65rem;color:var(--text-muted);margin-bottom:0.3rem;">ポーズ画像生成時にAPIに送信されるプロンプト</p>
+              <textarea id="reqPromptSanitize" style="width:100%;min-height:150px;font-size:0.7rem;font-family:monospace;background:rgba(76,175,80,0.1);border:1px solid var(--success);border-radius:4px;padding:0.5rem;color:var(--text-primary);resize:vertical;" readonly placeholder="「文章→直近設定」実行時に表示されます"></textarea>
+              <div style="display:flex;gap:0.3rem;margin-top:0.3rem;">
+                <button id="refreshSanitizePromptBtn" class="story-btn secondary" style="flex:1;font-size:0.65rem;padding:0.3rem;">🔄 更新</button>
+                <button id="copySanitizePromptBtn" class="story-btn secondary" style="font-size:0.65rem;padding:0.3rem 0.5rem;">📋</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="currentSceneImages" class="scene-images">
+          <div class="empty-scene"><p>📷 撮影してください</p></div>
+        </div>
+        <!-- ポーズ画像パネル -->
+        <div class="situation-section" id="poseImageGallerySection" style="margin-top:0.75rem;">
+          <div class="section-header">
+            <h4><span class="collapse-icon">▶</span> 🦴 ポーズ画像 <span class="badge" id="poseImageCount">0枚</span></h4>
+          </div>
+          <div class="section-body collapsed">
+            <div id="poseImageGallery" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(140px, 1fr));gap:0.5rem;">
+              <div style="grid-column:1/-1;text-align:center;padding:1rem;color:var(--text-muted);font-size:0.75rem;">撮影時に自動生成、または下のボタンで個別生成</div>
+            </div>
+            <div style="display:flex;gap:0.3rem;margin-top:0.5rem;flex-wrap:wrap;" id="poseGenButtons"></div>
+          </div>
+        </div>
+        <!-- デバッグパネル -->
+        <div class="situation-section" id="debugApiSection" style="margin-top:0.75rem;">
+          <div class="section-header">
+            <h4><span class="collapse-icon">▶</span> 🔍 API デバッグ <span class="badge">入出力確認</span></h4>
+          </div>
+          <div class="section-body collapsed">
+            <div style="display:flex;gap:2px;margin-bottom:0.5rem;background:rgba(0,0,0,0.2);border-radius:6px;padding:2px;flex-wrap:wrap;">
+              <button class="dbg-tab active" data-dbg-tab="skeleton" style="flex:1;min-width:60px;padding:0.3rem;font-size:0.6rem;border:none;border-radius:4px;cursor:pointer;background:var(--primary);color:white;">S1 骨組み</button>
+              <button class="dbg-tab" data-dbg-tab="charText" style="flex:1;min-width:60px;padding:0.3rem;font-size:0.6rem;border:none;border-radius:4px;cursor:pointer;background:transparent;color:var(--text-secondary);">S2 本文</button>
+              <button class="dbg-tab" data-dbg-tab="sanitize" style="flex:1;min-width:60px;padding:0.3rem;font-size:0.6rem;border:none;border-radius:4px;cursor:pointer;background:transparent;color:var(--text-secondary);">F3 ポーズ</button>
+              <button class="dbg-tab" data-dbg-tab="classify" style="flex:1;min-width:60px;padding:0.3rem;font-size:0.6rem;border:none;border-radius:4px;cursor:pointer;background:transparent;color:var(--text-secondary);">F8 分類</button>
+              <button class="dbg-tab" data-dbg-tab="convert" style="flex:1;min-width:60px;padding:0.3rem;font-size:0.6rem;border:none;border-radius:4px;cursor:pointer;background:transparent;color:var(--text-secondary);">F2 変換</button>
+            </div>
+            <div class="dbg-content active" data-dbg-content="skeleton">
+              <div style="margin-bottom:0.3rem;font-size:0.65rem;color:var(--success);">INPUT (S1 骨組み生成)</div>
+              <textarea id="dbgSkeletonInput" style="width:100%;min-height:100px;max-height:300px;font-size:0.65rem;font-family:monospace;background:rgba(76,175,80,0.08);border:1px solid rgba(76,175,80,0.3);border-radius:4px;padding:0.4rem;color:var(--text-primary);resize:vertical;" readonly></textarea>
+              <div style="margin:0.3rem 0;font-size:0.65rem;color:var(--warning);">OUTPUT (S1 応答)</div>
+              <textarea id="dbgSkeletonOutput" style="width:100%;min-height:100px;max-height:300px;font-size:0.65rem;font-family:monospace;background:rgba(255,152,0,0.08);border:1px solid rgba(255,152,0,0.3);border-radius:4px;padding:0.4rem;color:var(--text-primary);resize:vertical;" readonly></textarea>
+            </div>
+            <div class="dbg-content" data-dbg-content="charText" style="display:none;">
+              <div style="margin-bottom:0.3rem;font-size:0.65rem;color:var(--success);">INPUT (S2 本文生成)</div>
+              <textarea id="dbgCharTextInput" style="width:100%;min-height:100px;max-height:300px;font-size:0.65rem;font-family:monospace;background:rgba(76,175,80,0.08);border:1px solid rgba(76,175,80,0.3);border-radius:4px;padding:0.4rem;color:var(--text-primary);resize:vertical;" readonly></textarea>
+              <div style="margin:0.3rem 0;font-size:0.65rem;color:var(--warning);">OUTPUT (S2 応答)</div>
+              <textarea id="dbgCharTextOutput" style="width:100%;min-height:100px;max-height:300px;font-size:0.65rem;font-family:monospace;background:rgba(255,152,0,0.08);border:1px solid rgba(255,152,0,0.3);border-radius:4px;padding:0.4rem;color:var(--text-primary);resize:vertical;" readonly></textarea>
+            </div>
+            <div class="dbg-content" data-dbg-content="sanitize" style="display:none;">
+              <div style="margin-bottom:0.3rem;font-size:0.65rem;color:var(--success);">INPUT (F3)</div>
+              <textarea id="dbgSanitizeInput" style="width:100%;min-height:100px;max-height:300px;font-size:0.65rem;font-family:monospace;background:rgba(76,175,80,0.08);border:1px solid rgba(76,175,80,0.3);border-radius:4px;padding:0.4rem;color:var(--text-primary);resize:vertical;" readonly></textarea>
+              <div style="margin:0.3rem 0;font-size:0.65rem;color:var(--warning);">OUTPUT (F3)</div>
+              <textarea id="dbgSanitizeOutput" style="width:100%;min-height:100px;max-height:300px;font-size:0.65rem;font-family:monospace;background:rgba(255,152,0,0.08);border:1px solid rgba(255,152,0,0.3);border-radius:4px;padding:0.4rem;color:var(--text-primary);resize:vertical;" readonly></textarea>
+            </div>
+            <div class="dbg-content" data-dbg-content="classify" style="display:none;">
+              <div style="margin-bottom:0.3rem;font-size:0.65rem;color:var(--success);">INPUT (F8)</div>
+              <textarea id="dbgClassifyInput" style="width:100%;min-height:100px;max-height:300px;font-size:0.65rem;font-family:monospace;background:rgba(76,175,80,0.08);border:1px solid rgba(76,175,80,0.3);border-radius:4px;padding:0.4rem;color:var(--text-primary);resize:vertical;" readonly></textarea>
+              <div style="margin:0.3rem 0;font-size:0.65rem;color:var(--warning);">OUTPUT (F8)</div>
+              <textarea id="dbgClassifyOutput" style="width:100%;min-height:100px;max-height:300px;font-size:0.65rem;font-family:monospace;background:rgba(255,152,0,0.08);border:1px solid rgba(255,152,0,0.3);border-radius:4px;padding:0.4rem;color:var(--text-primary);resize:vertical;" readonly></textarea>
+            </div>
+            <div class="dbg-content" data-dbg-content="convert" style="display:none;">
+              <div style="margin-bottom:0.3rem;font-size:0.65rem;color:var(--success);">INPUT (F2)</div>
+              <textarea id="dbgConvertInput" style="width:100%;min-height:100px;max-height:300px;font-size:0.65rem;font-family:monospace;background:rgba(76,175,80,0.08);border:1px solid rgba(76,175,80,0.3);border-radius:4px;padding:0.4rem;color:var(--text-primary);resize:vertical;" readonly></textarea>
+              <div style="margin:0.3rem 0;font-size:0.65rem;color:var(--warning);">OUTPUT (F2)</div>
+              <textarea id="dbgConvertOutput" style="width:100%;min-height:100px;max-height:300px;font-size:0.65rem;font-family:monospace;background:rgba(255,152,0,0.08);border:1px solid rgba(255,152,0,0.3);border-radius:4px;padding:0.4rem;color:var(--text-primary);resize:vertical;" readonly></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ===== IMAGE MODAL (v5.6互換) ===== -->
+  <div id="imageModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modalTitle">画像詳細</h3><button id="closeModal" class="close-btn">&times;</button>
+      </div>
+      <div class="modal-body"><img id="modalImage" src="" alt="">
+        <p id="modalPrompt" style="margin-top:1rem;font-size:0.8rem;color:var(--text-secondary);"></p>
+      </div>
+      <div class="modal-footer">
+        <button id="setRefBtn" class="modal-btn secondary">参照画像に設定</button>
+        <button id="downloadBtn" class="modal-btn primary">ダウンロード</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== JS MODULES ===== -->
+  <script src="v2-constants.js"></script>
+  <script src="v2-db.js"></script>
+  <script src="v2-tags.js"></script>
+  <script src="v2-state.js"></script>
+  <script src="v2-utils.js"></script>
+  <script src="v2-memory.js"></script>
+  <script src="v2-ui.js"></script>
+  <script src="v2-image-prompt.js"></script>
+  <script src="v2-image-gen.js"></script>
+  <script src="v2-image-scene.js"></script>
+  <script src="v2-classify.js"></script>
+  <script src="v2-pipeline.js"></script>
+  <script src="v2-init.js"></script>
+</body>
+
+</html>
