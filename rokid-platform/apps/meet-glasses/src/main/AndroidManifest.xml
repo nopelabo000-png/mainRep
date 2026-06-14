@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- 入出力: グラスのマイク / スピーカー / カメラ -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
+    <uses-permission android:name="android.permission.CAMERA"/>
+
+    <!-- Meet Media API / WebRTC への直接接続 -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+
+    <!-- ローカルサーバー + 会議を常駐させる前景サービス -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA"/>
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission android:name="android.permission.WAKE_LOCK"/>
+
+    <uses-feature android:name="android.hardware.camera" android:required="true"/>
+    <uses-feature android:name="android.hardware.microphone" android:required="true"/>
+    <uses-feature android:name="rokid.hardware.display" android:required="true"/>
+
+    <application android:label="Meet Glasses">
+
+        <!-- 単眼グリーンHUD + 音声起動 -->
+        <activity android:name=".HudActivity" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+            <!-- 音声コマンドで起動 -->
+            <meta-data android:name="rokid.voice.command" android:value="ミート開始"/>
+        </activity>
+
+        <!-- グラス本体に常駐するローカルサーバー + Meet 接続 -->
+        <service
+            android:name=".MeetForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="microphone|camera"/>
+
+    </application>
+</manifest>

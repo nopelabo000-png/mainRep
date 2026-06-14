@@ -20,6 +20,31 @@
         "src/main/AndroidManifest.xml",
         "src/main/java/com/example/translator/HudActivity.java"
       ]
+    },
+    {
+      "id": "meet-glasses",
+      "name": "Meet Glasses",
+      "template": "cxr-s-ondevice",
+      "sdk": "cxr-s",
+      "version": "1.0.0",
+      "androidPackage": "com.rokid.meetglass",
+      "voiceCommand": "ミート開始",
+      "tagline": "On-glass Google Meet over WebRTC",
+      "description": "グラス本体でローカルサーバーを動かし、Meet Media API+WebRTCでGoogle Meetへ直接接続。マイク/スピーカー/カメラを入出力に使用。",
+      "author": "nopelabo000",
+      "createdAt": "2026-06-14T06:37:29.988Z",
+      "updatedAt": "2026-06-14T06:40:24.163Z",
+      "files": [
+        "README.md",
+        "build.gradle",
+        "rokid.app.json",
+        "src/main/AndroidManifest.xml",
+        "src/main/java/com/rokid/meetglass/GlassMediaIO.java",
+        "src/main/java/com/rokid/meetglass/HudActivity.java",
+        "src/main/java/com/rokid/meetglass/LocalControlServer.java",
+        "src/main/java/com/rokid/meetglass/MeetForegroundService.java",
+        "src/main/java/com/rokid/meetglass/MeetMediaClient.java"
+      ]
     }
   ]
 }
