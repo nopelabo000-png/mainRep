@@ -12,6 +12,7 @@ const registry = require('../lib/registry');
 const scaffold = require('../lib/scaffold');
 const bundle = require('../lib/bundle');
 const spec = require('../lib/rokid-spec');
+const device = require('../lib/device');
 
 let pass = 0;
 function ok(name) {
@@ -58,6 +59,31 @@ function ok(name) {
   for (const m of created) registry.remove(m.id);
   registry.remove(imported.id);
   ok('クリーンアップ削除成功');
+
+  // device: TCP連携の純粋関数（adb非依存）
+  console.log('device テスト');
+  assert.strictEqual(device.normalizeTarget('192.168.1.5'), '192.168.1.5:5555', 'port補完');
+  assert.strictEqual(device.normalizeTarget('192.168.1.5:7000'), '192.168.1.5:7000', 'port保持');
+  assert.deepStrictEqual(device.cmd.connect('h:5555'), ['connect', 'h:5555'], 'connect args');
+  assert.deepStrictEqual(device.cmd.tcpip(5555), ['tcpip', '5555'], 'tcpip args');
+  assert.deepStrictEqual(device.cmd.install('a.apk', 'h:1'), ['-s', 'h:1', 'install', '-r', 'a.apk'], 'install args');
+  ok('device コマンド組み立てが正しい');
+
+  const parsed = device.parsePackages(
+    'package:/system/app/Foo/Foo.apk=com.rokid.foo\npackage:/data/app/Bar/base.apk=com.example.bar'
+  );
+  assert(parsed.length === 2 && parsed[0].pkg === 'com.rokid.foo', 'parsePackages');
+  ok('pm list packages 出力を解析');
+
+  assert.strictEqual(device.findApk('___nonexistent___'), null, 'no apk → null');
+  assert.throws(() => device.installApp('___nonexistent___'), /アプリID|APK/, 'install 不正入力でエラー');
+  ok('未ビルド/不正入力を適切に拒否');
+
+  // DRYRUN で実行系がadb無しでも動く
+  process.env.ROKID_ADB_DRYRUN = '1';
+  assert(/connect/.test(device.connect('10.0.0.2')), 'dryrun connect');
+  delete process.env.ROKID_ADB_DRYRUN;
+  ok('DRYRUN で接続コマンドを生成');
 
   // HTTP API
   console.log('HTTP API テスト');

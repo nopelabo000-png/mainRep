@@ -47,6 +47,34 @@ node cli/rokid.js import path/to/app.rokidapp  # インポート
 node cli/rokid.js remove live-translator        # 削除
 ```
 
+### 実機(TCP)連携 — バックアップ & インストール
+
+Rokid Glasses は YodaOS(Android 12) なので **adb over WiFi（TCP接続）**で
+実機連携できる。USB で一度 `tcpip` を有効化すれば、以降は WiFi だけで
+「①デフォルトアプリのバックアップ」「②作成アプリのインポート（インストール）」が完結する。
+
+```bash
+# 0) 初回のみ USB 接続中に TCP を有効化（以降は WiFi で接続できる）
+node cli/rokid.js device tcpip
+
+# 1) グラスへ TCP 接続（host のみ指定で :5555 を補完）
+node cli/rokid.js device connect 192.168.1.50
+node cli/rokid.js device devices
+
+# 2) ① デフォルトアプリのバックアップ（APKを backups/<host>/ へ吸い出す）
+node cli/rokid.js device backup --target 192.168.1.50              # プリイン全体
+node cli/rokid.js device backup --filter '^com\.rokid'             # Rokid製のみ
+node cli/rokid.js device restore backups/192.168.1.50_5555         # 書き戻し
+
+# 3) ② 作成アプリのインポート（ビルド済みAPKを端末へインストール）
+#    先に apps/<id> で ./gradlew assembleDebug を実行しておく
+node cli/rokid.js device install meet-glasses --target 192.168.1.50
+node cli/rokid.js device install path/to/any.apk                   # 任意APKも可
+```
+
+- `ROKID_ADB` で adb バイナリのパスを差し替え可能（既定 `adb`）。
+- `ROKID_ADB_DRYRUN=1` で実行せず発行コマンドだけ確認できる（CI/動作確認用）。
+
 ## テンプレート
 
 | テンプレート | SDK | 実行場所 | 用途 |
@@ -74,11 +102,17 @@ ID 衝突時は自動でユニークIDを採番する。
 | GET | `/api/apps/:id/files` | ファイル内容 |
 | GET | `/api/apps/:id/export` | `.rokidapp` ダウンロード |
 | POST | `/api/import` | バンドル取り込み |
+| GET | `/api/device/devices` | 接続中の端末一覧（TCP） |
+| POST | `/api/device/connect` | TCPで端末へ接続 `{target}` |
+| GET | `/api/device/packages` | パッケージ一覧 `?third=1&target=` |
+| POST | `/api/device/backup` | デフォルトアプリ等をバックアップ |
+| POST | `/api/device/install` | 作成アプリ/APKをインストール `{id}` |
+| POST | `/api/device/restore` | バックアップを書き戻す `{dir}` |
 
 ## テスト
 
 ```bash
-npm test    # lib + HTTP API の 12 項目を検証
+npm test    # lib + device + HTTP API の 16 項目を検証
 ```
 
 ## Rokid 開発要件

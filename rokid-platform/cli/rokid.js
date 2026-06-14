@@ -14,6 +14,7 @@
  *   rokid import <file.rokidapp>                 インポート
  *   rokid remove <id>                            削除
  *   rokid serve [port]                           Web UI を起動
+ *   rokid device <sub> ...                        実機(TCP)連携: 接続/バックアップ/導入
  */
 
 const path = require('path');
@@ -22,6 +23,7 @@ const spec = require('../lib/rokid-spec');
 const registry = require('../lib/registry');
 const scaffold = require('../lib/scaffold');
 const bundle = require('../lib/bundle');
+const device = require('../lib/device');
 
 function parseFlags(args) {
   const flags = {};
@@ -110,6 +112,62 @@ const commands = {
     const id = args[0];
     registry.remove(id);
     out(`削除しました: ${id}`);
+  },
+
+  device(args) {
+    const [sub, ...rest] = args;
+    const { flags, positional } = parseFlags(rest);
+    const target = flags.target || flags.t;
+    switch (sub) {
+      case 'tcpip': // USB接続中に実行→以降WiFiでTCP接続できる
+        return out(device.enableTcpip(positional[0]));
+      case 'connect':
+        return out(device.connect(positional[0] || target));
+      case 'disconnect':
+        return out(device.disconnect(positional[0] || target));
+      case 'devices':
+        return out(device.devices());
+      case 'apps':
+      case 'packages': {
+        const pkgs = device.listPackages({
+          target,
+          system: flags.system !== false && !flags.third,
+          third: !!flags.third,
+        });
+        return out(pkgs.map((p) => `  ${p.pkg}`).join('\n') || '(なし)');
+      }
+      case 'backup': { // ① デフォルトアプリのバックアップ
+        const r = device.backup({
+          target,
+          third: !!flags.third,
+          system: flags.system !== false,
+          filter: typeof flags.filter === 'string' ? flags.filter : undefined,
+          outDir: typeof flags.out === 'string' ? flags.out : undefined,
+        });
+        return out(`バックアップ完了: ${r.count} 個 → ${r.dir}`);
+      }
+      case 'install': // ② 作成アプリのインポート(インストール)
+      case 'import': {
+        const r = device.installApp(positional[0], { target });
+        return out(`インストール: ${r.apk}\n${r.result}`);
+      }
+      case 'restore': {
+        const r = device.restore(positional[0], { target });
+        return out(`リストア完了: ${r.count} 個`);
+      }
+      default:
+        return out(
+          'device サブコマンド:\n' +
+          '  tcpip [port]                USB接続中の端末をTCPモードへ(以降WiFi可)\n' +
+          '  connect <host[:port]>       TCPで端末へ接続\n' +
+          '  disconnect [host[:port]]    切断\n' +
+          '  devices                     接続中の端末一覧\n' +
+          '  apps [--third] [--target h] パッケージ一覧(既定:プリイン)\n' +
+          '  backup [--third] [--filter re] [--out dir] [--target h]  デフォルトアプリ等をAPK保存\n' +
+          '  install <id|apk> [--target h]   作成アプリ/APKを端末へインストール\n' +
+          '  restore <backupDir> [--target h] バックアップを書き戻す'
+        );
+    }
   },
 
   serve(args) {

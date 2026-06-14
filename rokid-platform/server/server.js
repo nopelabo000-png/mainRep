@@ -11,6 +11,10 @@
  *   DELETE /api/apps/:id           削除
  *   GET  /api/apps/:id/export      .rokidapp ダウンロード
  *   POST /api/import               .rokidapp 取り込み (JSON body)
+ *   GET  /api/device/devices       接続中の端末一覧 (TCP)
+ *   POST /api/device/connect       TCPで端末へ接続 {target}
+ *   POST /api/device/backup        デフォルトアプリ等をバックアップ
+ *   POST /api/device/install       作成アプリを端末へインストール {id}
  */
 
 const http = require('http');
@@ -20,6 +24,7 @@ const spec = require('../lib/rokid-spec');
 const registry = require('../lib/registry');
 const scaffold = require('../lib/scaffold');
 const bundle = require('../lib/bundle');
+const device = require('../lib/device');
 
 const WEB_DIR = path.join(__dirname, '..', 'web');
 const PORT = parseInt(process.env.ROKID_PORT || '4173', 10);
@@ -87,6 +92,39 @@ async function api(req, res, url) {
     const body = await readBody(req);
     const meta = bundle.importBundle(body.bundle || body);
     return send(res, 201, meta);
+  }
+
+  // /api/device ... 実機(TCP)連携
+  if (parts[1] === 'device') {
+    const sub = parts[2];
+    if (sub === 'devices' && method === 'GET') {
+      return send(res, 200, { output: device.devices() });
+    }
+    if (sub === 'connect' && method === 'POST') {
+      const body = await readBody(req);
+      return send(res, 200, { output: device.connect(body.target) });
+    }
+    if (sub === 'tcpip' && method === 'POST') {
+      const body = await readBody(req);
+      return send(res, 200, { output: device.enableTcpip(body.port) });
+    }
+    if (sub === 'packages' && method === 'GET') {
+      const third = url.searchParams.get('third') === '1';
+      const target = url.searchParams.get('target') || undefined;
+      return send(res, 200, device.listPackages({ third, system: !third, target }));
+    }
+    if (sub === 'backup' && method === 'POST') {
+      const body = await readBody(req);
+      return send(res, 200, device.backup(body));
+    }
+    if (sub === 'install' && method === 'POST') {
+      const body = await readBody(req);
+      return send(res, 200, device.installApp(body.id || body.apk, { target: body.target }));
+    }
+    if (sub === 'restore' && method === 'POST') {
+      const body = await readBody(req);
+      return send(res, 200, device.restore(body.dir, { target: body.target }));
+    }
   }
 
   // /api/apps ...
