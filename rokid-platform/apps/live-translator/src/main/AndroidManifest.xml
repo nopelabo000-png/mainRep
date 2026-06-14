@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+    <uses-feature android:name="rokid.hardware.display" android:required="true"/>
+
+    <application android:label="Live Translator">
+        <activity android:name=".HudActivity" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+            <!-- 音声コマンドで起動 -->
+            <meta-data android:name="rokid.voice.command" android:value="翻訳開始"/>
+        </activity>
+    </application>
+</manifest>

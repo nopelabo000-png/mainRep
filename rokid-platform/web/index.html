@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rokid 開発プラットフォーム</title>
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="logo">◉</span>
+    <div>
+      <h1>Rokid Dev Platform</h1>
+      <p id="subtitle">AIスマートグラス アプリ開発環境</p>
+    </div>
+  </div>
+  <nav class="tabs">
+    <button class="tab active" data-tab="apps">アプリ</button>
+    <button class="tab" data-tab="create">新規作成</button>
+    <button class="tab" data-tab="spec">開発要件</button>
+  </nav>
+</header>
+
+<main>
+  <!-- アプリ一覧 + 詳細 -->
+  <section id="tab-apps" class="tabpanel active">
+    <aside class="sidebar">
+      <div class="sidebar-head">
+        <h2>格納済みアプリ</h2>
+        <label class="btn small" for="importFile">インポート</label>
+        <input type="file" id="importFile" accept=".rokidapp,application/json" hidden>
+      </div>
+      <ul id="appList" class="app-list"></ul>
+    </aside>
+
+    <div class="detail">
+      <div id="emptyDetail" class="empty">
+        <p>左のリストからアプリを選択するか、「新規作成」から始めてください。</p>
+      </div>
+      <article id="appDetail" hidden>
+        <div class="detail-head">
+          <div>
+            <h2 id="dName"></h2>
+            <p id="dMeta" class="muted"></p>
+          </div>
+          <div class="actions">
+            <button class="btn" id="exportBtn">エクスポート (.rokidapp)</button>
+            <button class="btn danger" id="deleteBtn">削除</button>
+          </div>
+        </div>
+
+        <div class="detail-grid">
+          <div class="files">
+            <h3>ファイル</h3>
+            <ul id="fileList" class="file-list"></ul>
+            <pre id="fileView" class="file-view"></pre>
+          </div>
+
+          <div class="sim">
+            <h3>HUD シミュレータ <span class="muted">(右目単眼・単色グリーン)</span></h3>
+            <div class="glasses">
+              <div class="lens">
+                <div id="hudScreen" class="hud-screen">
+                  <div id="hudName" class="hud-name"></div>
+                  <div id="hudTagline" class="hud-tagline"></div>
+                  <div id="hudVoice" class="hud-voice"></div>
+                </div>
+              </div>
+            </div>
+            <p class="muted small" id="simNote"></p>
+          </div>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <!-- 新規作成 -->
+  <section id="tab-create" class="tabpanel">
+    <form id="createForm" class="create-form">
+      <h2>新しい Rokid アプリ</h2>
+      <label>アプリ名 <input name="name" required placeholder="My Glasses App"></label>
+      <label>テンプレート
+        <select name="template" id="templateSelect"></select>
+      </label>
+      <p id="templateDesc" class="muted small"></p>
+      <label>タグライン <input name="tagline" placeholder="HUDに出す一言"></label>
+      <label>音声コマンド <input name="voiceCommand" placeholder="例: ナビ開始"></label>
+      <label>Android パッケージ <input name="androidPackage" placeholder="com.example.app"></label>
+      <label>作者 <input name="author" placeholder="あなたの名前"></label>
+      <label>説明 <textarea name="description" rows="3"></textarea></label>
+      <button class="btn primary" type="submit">生成する</button>
+      <p id="createResult" class="result"></p>
+    </form>
+  </section>
+
+  <!-- 開発要件 -->
+  <section id="tab-spec" class="tabpanel">
+    <div id="specContent" class="spec"></div>
+  </section>
+</main>
+
+<div id="toast" class="toast" hidden></div>
+<script src="/app.js"></script>
+</body>
+</html>

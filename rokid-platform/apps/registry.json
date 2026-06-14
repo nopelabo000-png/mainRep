@@ -1,0 +1,25 @@
+{
+  "apps": [
+    {
+      "id": "live-translator",
+      "name": "Live Translator",
+      "template": "cxr-s-ondevice",
+      "sdk": "cxr-s",
+      "version": "1.0.0",
+      "androidPackage": "com.example.translator",
+      "voiceCommand": "翻訳開始",
+      "tagline": "Real-time AR translation",
+      "description": "",
+      "author": "",
+      "createdAt": "2026-06-14T05:44:51.797Z",
+      "updatedAt": "2026-06-14T05:44:51.797Z",
+      "files": [
+        "README.md",
+        "build.gradle",
+        "rokid.app.json",
+        "src/main/AndroidManifest.xml",
+        "src/main/java/com/example/translator/HudActivity.java"
+      ]
+    }
+  ]
+}
