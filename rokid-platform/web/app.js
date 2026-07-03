@@ -189,6 +189,13 @@ function renderSpec() {
         <td>runsOn: ${esc(s.runsOn)} · pkg: ${esc(s.package)}${s.maven ? '<br>' + esc(s.maven) : ''}</td></tr>`).join('')}</table>
     </div>
     <div class="spec-card">
+      <h3>グラスへの配信方式</h3>
+      <p class="muted small">有線(USB)は選択肢の一つ。実際は Wi-Fi / Bluetooth 経由の配信が主流。</p>
+      <table>${(SPEC.deployMethods || []).map((m) => `<tr>
+        <td>${m.wireless ? '<span class="chip">📶 ワイヤレス</span>' : '🔌 有線'} ${esc(m.label)}</td>
+        <td>${esc(m.desc)}</td></tr>`).join('')}</table>
+    </div>
+    <div class="spec-card">
       <h3>HUD デザインガイド（単眼・単色グリーン）</h3>
       <p class="muted small">セーフエリア ${SPEC.hudGuide.safeArea.width}×${SPEC.hudGuide.safeArea.height} / 最小フォント ${SPEC.hudGuide.minFontPx}px / 1画面 ${SPEC.hudGuide.maxLinesPerView}行以内</p>
       <ul>${SPEC.hudGuide.rules.map((r) => `<li>${esc(r)}</li>`).join('')}</ul>

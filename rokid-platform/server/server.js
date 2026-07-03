@@ -82,6 +82,7 @@ async function api(req, res, url) {
       device: spec.DEVICE,
       sdks: spec.listSdks(),
       templates: spec.listTemplates(),
+      deployMethods: spec.DEPLOY_METHODS,
       hudGuide: spec.HUD_GUIDE,
       platformVersion: spec.PLATFORM_VERSION,
     });

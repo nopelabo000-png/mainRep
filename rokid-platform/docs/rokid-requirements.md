@@ -36,10 +36,14 @@ AIスマートグラス **Rokid Glasses** 向けアプリ開発の技術要件�
 ## 3. パッケージ・配布
 
 - アプリは標準 **APK**（Web HUD は HTML 一式）。
-- インストールは USB/WiFi デバッグ（`adb install`）、WebUSB インストーラ、
-  またはスマホ companion 経由のサイドロードが一般的。
+- **配信は有線に限らない**。むしろワイヤレスが主流:
+  - 📶 CXR-M SDK で Wi-Fi 経由サイドロード（ケーブル不要、シリアル番号のみ）
+  - 📶 Bluetooth SPP + Wi-Fi Direct でスマホからPush
+  - 📶 ADB over TCP（`adb tcpip 5555` → `adb connect <ip>`）
+  - 🔌 ADB over USB / WebUSB（有線、最も確実）
+  - 詳細と出典は [import-export-investigation.md](import-export-investigation.md)。
 - 本プラットフォームでは配布用に **`.rokidapp`** バンドル（依存ゼロのJSON、
-  ファイルをbase64格納）を採用し、環境間でアプリを丸ごと授受できる。
+  ファイルをbase64格納）を採用し、環境間でアプリを丸ごと授受できる（ネットワーク経路は任意）。
 
 ## 4. HUD デザインガイド（単眼・単色グリーン）
 

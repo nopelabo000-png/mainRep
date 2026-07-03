@@ -90,6 +90,54 @@ const TEMPLATES = {
   },
 };
 
+// アプリをグラスへ配信する方法。
+// 調査の結論: 有線(USB)は選択肢の一つに過ぎず、ワイヤレスが主流。
+// docs/import-export-investigation.md に根拠と出典。
+const DEPLOY_METHODS = [
+  {
+    id: 'cxr-m-wifi',
+    label: 'CXR-M / Wi-Fi アップロード',
+    wireless: true,
+    desc: 'CXR-M SDK でスマホから Wi-Fi 経由 APK をサイドロード。開発ケーブル不要、シリアル番号のみ。',
+    ref: 'RokidApkUploader',
+  },
+  {
+    id: 'bt-wifi-direct',
+    label: 'Bluetooth + Wi-Fi Direct',
+    wireless: true,
+    desc: 'スマホのコンパニオンアプリからBluetooth SPPで制御し、APKをWi-Fi DirectでグラスへPush。',
+    ref: 'Rokid-APKs',
+  },
+  {
+    id: 'adb-tcp',
+    label: 'ADB over TCP/Wi-Fi',
+    wireless: true,
+    desc: 'YodaOSはAndroidベース。adb tcpip 後は Wi-Fi 経由で adb install が可能。',
+    ref: 'adb connect <ip>:5555',
+  },
+  {
+    id: 'companion-store',
+    label: 'コンパニオン / ストア配信',
+    wireless: true,
+    desc: 'Hi Rokid(CXR-L)等のコンパニオン経由でグラスへ転送し、端末側インストーラで確認。',
+    ref: 'Hi Rokid app',
+  },
+  {
+    id: 'adb-usb',
+    label: 'ADB over USB（有線）',
+    wireless: false,
+    desc: '開発ケーブルで adb install。最も確実だが物理接続が必要。',
+    ref: 'adb install -r app.apk',
+  },
+  {
+    id: 'webusb',
+    label: 'WebUSB インストーラ（有線）',
+    wireless: false,
+    desc: 'ブラウザからUSB接続でAPKを書き込む。ドライバ不要だが物理接続が必要。',
+    ref: 'WebUSB',
+  },
+];
+
 // HUD デザイン推奨ガイド (単眼・単色前提)
 const HUD_GUIDE = {
   safeArea: { width: 640, height: 400 }, // 論理ピクセルの目安
@@ -117,6 +165,7 @@ module.exports = {
   DEVICE,
   SDKS,
   TEMPLATES,
+  DEPLOY_METHODS,
   HUD_GUIDE,
   listSdks,
   listTemplates,

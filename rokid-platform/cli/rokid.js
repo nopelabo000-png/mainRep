@@ -17,13 +17,28 @@
  *   rokid device <sub> ...                        実機(TCP)連携: 接続/バックアップ/導入
  */
 
-const path = require('path');
 const fs = require('fs');
 const spec = require('../lib/rokid-spec');
 const registry = require('../lib/registry');
 const scaffold = require('../lib/scaffold');
 const bundle = require('../lib/bundle');
 const device = require('../lib/device');
+
+const HELP = `rokid — Rokid アプリ開発 CLI
+
+使い方:
+  rokid templates                          テンプレート/SDK一覧
+  rokid spec                               Rokid 開発要件サマリ
+  rokid deploy                             グラスへの配信方式（有線/ワイヤレス）
+  rokid new <name> -t <template> [--opt v] アプリ生成
+  rokid list                               格納済みアプリ一覧
+  rokid show <id>                          アプリ詳細
+  rokid export <id> [out.rokidapp]         エクスポート
+  rokid import <file.rokidapp>             インポート
+  rokid remove <id>                        削除
+  rokid serve [port]                       Web UI を起動
+
+new のオプション: --pkg --voice --tagline --desc --author --version`;
 
 function parseFlags(args) {
   const flags = {};
@@ -60,6 +75,16 @@ const commands = {
 
   spec() {
     out({ device: spec.DEVICE, hudGuide: spec.HUD_GUIDE });
+  },
+
+  deploy() {
+    out('グラスへのアプリ配信方式 (調査結果):');
+    for (const m of spec.DEPLOY_METHODS) {
+      const tag = m.wireless ? '📶 ワイヤレス' : '🔌 有線    ';
+      out(`  ${tag}  ${m.label}`);
+      out(`             ${m.desc}`);
+    }
+    out('\n結論: 有線(USB)は選択肢の一つに過ぎず、Wi-Fi/Bluetooth 経由の配信が主流。');
   },
 
   new(args) {
@@ -176,8 +201,7 @@ const commands = {
   },
 
   help() {
-    out(fs.readFileSync(path.join(__dirname, 'rokid.js'), 'utf8')
-      .split('\n').slice(4, 22).map((l) => l.replace(/^ \*?/, '')).join('\n'));
+    out(HELP);
   },
 };
 
