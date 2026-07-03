@@ -27,6 +27,7 @@ $$('.tab').forEach((b) =>
     $$('.tabpanel').forEach((x) => x.classList.remove('active'));
     b.classList.add('active');
     $('#tab-' + b.dataset.tab).classList.add('active');
+    if (b.dataset.tab === 'deploy') fillDeployApps();
   })
 );
 
@@ -105,6 +106,126 @@ $('#deleteBtn').addEventListener('click', async () => {
   await loadApps();
   toast('削除しました');
 });
+
+$('#installBtn').addEventListener('click', () => {
+  if (!CURRENT) return;
+  // 配信タブへ移動し、対象アプリを選択した状態にする
+  $('.tab[data-tab="deploy"]').click();
+  fillDeployApps(CURRENT);
+});
+
+// ---- 配信（実機 TCP 連携）----
+function dpLog(msg, cls) {
+  const el = $('#dpLog');
+  el.textContent = msg;
+  el.className = 'dp-log' + (cls ? ' ' + cls : '');
+}
+
+function dpTarget() {
+  return $('#dpTarget').value.trim() || undefined;
+}
+
+async function dpRun(label, fn) {
+  dpLog(label + ' 実行中…');
+  try {
+    const r = await fn();
+    dpLog(label + ' 完了', 'ok');
+    return r;
+  } catch (e) {
+    dpLog(label + ' 失敗: ' + e.message, 'err');
+    return null;
+  }
+}
+
+function fillDeployApps(selectId) {
+  api('/apps').then((apps) => {
+    const sel = $('#dpAppSelect');
+    sel.innerHTML = '';
+    const targets = apps.filter((a) => a.sdk !== 'web-hud'); // APK系のみ
+    if (!targets.length) {
+      sel.innerHTML = '<option value="">（APK系アプリがありません）</option>';
+      return;
+    }
+    targets.forEach((a) => {
+      const o = document.createElement('option');
+      o.value = a.id;
+      o.textContent = `${a.name} (${a.id})`;
+      if (a.id === selectId) o.selected = true;
+      sel.appendChild(o);
+    });
+  });
+}
+
+$('#dpConnect').addEventListener('click', async () => {
+  const target = dpTarget();
+  if (!target) return dpLog('接続先 IP を入力してください', 'err');
+  const r = await dpRun('接続', () =>
+    api('/device/connect', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ target }),
+    }));
+  if (r) { $('#dpDevicesOut').hidden = false; $('#dpDevicesOut').textContent = r.output; }
+});
+
+$('#dpDevices').addEventListener('click', async () => {
+  const r = await dpRun('端末一覧', () => api('/device/devices'));
+  if (r) { $('#dpDevicesOut').hidden = false; $('#dpDevicesOut').textContent = r.output; }
+});
+
+$('#dpInstall').addEventListener('click', async () => {
+  const id = $('#dpAppSelect').value;
+  if (!id) return dpLog('アプリを選択してください', 'err');
+  const r = await dpRun('インストール', () =>
+    api('/device/install', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, target: dpTarget() }),
+    }));
+  if (r) dpLog(`インストール完了: ${r.apk}\n${r.result}`, 'ok');
+});
+
+$('#dpBackup').addEventListener('click', async () => {
+  const filter = $('#dpFilter').value.trim() || undefined;
+  const r = await dpRun('バックアップ', () =>
+    api('/device/backup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filter, target: dpTarget() }),
+    }));
+  if (r) {
+    dpLog(`バックアップ完了: ${r.count} 個 → ${r.dir}`, 'ok');
+    $('#dpRestoreDir').value = r.dir;
+  }
+});
+
+$('#dpRestore').addEventListener('click', async () => {
+  const dir = $('#dpRestoreDir').value.trim();
+  if (!dir) return dpLog('リストア元ディレクトリを入力してください', 'err');
+  const r = await dpRun('リストア', () =>
+    api('/device/restore', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dir, target: dpTarget() }),
+    }));
+  if (r) dpLog(`リストア完了: ${r.count} 個`, 'ok');
+});
+
+async function dpShowPackages(third) {
+  const q = new URLSearchParams();
+  if (third) q.set('third', '1');
+  const t = dpTarget();
+  if (t) q.set('target', t);
+  const r = await dpRun(third ? 'サードパーティ一覧' : 'プリイン一覧', () =>
+    api('/device/packages?' + q));
+  if (r) {
+    $('#dpPkgsOut').hidden = false;
+    $('#dpPkgsOut').textContent =
+      r.map((p) => p.pkg).join('\n') || '(なし)';
+  }
+}
+$('#dpPkgsSys').addEventListener('click', () => dpShowPackages(false));
+$('#dpPkgsThird').addEventListener('click', () => dpShowPackages(true));
 
 // ---- インポート ----
 $('#importFile').addEventListener('change', async (e) => {

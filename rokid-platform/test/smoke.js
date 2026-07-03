@@ -134,6 +134,26 @@ function ok(name) {
   assert(res.status === 200, 'delete ok');
   ok('DELETE /api/apps/:id');
 
+  // 配信API（DRYRUNでadb無しでも検証可能）
+  process.env.ROKID_ADB_DRYRUN = '1';
+  res = await post('/api/device/connect', { target: '10.0.0.9' });
+  assert(res.status === 200 && /connect 10\.0\.0\.9:5555/.test(res.body.output), 'device connect');
+  ok('POST /api/device/connect (dry-run)');
+
+  res = await get('/api/device/devices');
+  assert(res.status === 200 && /devices/.test(res.body.output), 'device devices');
+  delete process.env.ROKID_ADB_DRYRUN;
+  ok('GET /api/device/devices (dry-run)');
+
+  // 新テンプレート（CXR-L / UXR）の生成物を確認
+  res = await post('/api/apps', { name: 'L App', template: 'cxr-l-standalone' });
+  assert(res.status === 201 && res.body.files.includes('build.gradle'), 'cxr-l files');
+  await req('DELETE', `/api/apps/${res.body.id}`);
+  res = await post('/api/apps', { name: 'U App', template: 'uxr-unity' });
+  assert(res.status === 201 && res.body.files.some((f) => f.endsWith('.cs')), 'uxr files');
+  await req('DELETE', `/api/apps/${res.body.id}`);
+  ok('CXR-L / UXR テンプレートが生成できる');
+
   server.close();
   console.log(`\n全 ${pass} テスト成功 ✅`);
   process.exit(0);

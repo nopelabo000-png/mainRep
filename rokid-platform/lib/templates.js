@@ -155,6 +155,116 @@ Bluetooth/Wi-Fi でグラスと接続し、HUD を送信する。APK の Push �
   return files;
 }
 
+// ---- CXR-L: スタンドアロンアプリ ----
+function cxrLStandalone(app) {
+  const files = androidApp(app, {
+    sdkId: 'cxr-l',
+    compileSdk: 34,
+    cls: 'StandaloneActivity',
+    permissions: [
+      'android.permission.BLUETOOTH_CONNECT',
+      'android.permission.BLUETOOTH_SCAN',
+      'android.permission.RECORD_AUDIO',
+      'android.permission.CAMERA',
+    ],
+    activityBody: {
+      imports: '',
+      doc: 'CXR-L で標準 Rokid アプリを置き換えるスタンドアロン構成。AIDL で AI サービスへバインドする。',
+      onCreate:
+`        // TODO: CxrClientL.bind(this) — AIDL で Rokid AI サービスへ接続
+        // TODO: 認証は Rokid AI App / Hi Rokid 経由（グラスのシリアル番号）
+        // TODO: カメラ/音声ストリームを購読し、CustomView UI を駆動する`,
+    },
+  });
+  files['README.md'] =
+`# ${app.name} (CXR-L スタンドアロン)
+
+標準の Rokid アプリを**置き換える**スタンドアロンアプリ (minSdk ${SDKS['cxr-l'].minSdk})。
+Android AIDL で AI サービスへ直接バインドし、グラスの写真/音声ストリームの取得や
+CustomView UI の駆動まで自前で行う。
+
+## CXR-M との違い
+- CXR-M: 公式 Rokid アプリと**併存**するコンパニオン
+- CXR-L: 公式アプリの役割ごと**置き換える**(認証・ストリーム管理も自前)
+
+## ビルド
+\`\`\`
+./gradlew assembleDebug
+\`\`\`
+`;
+  return files;
+}
+
+// ---- UXR: Unity XR プロジェクト骨格 ----
+function uxrUnity(app) {
+  const pkg = derivePackage(app);
+  const cls = app.name.replace(/[^A-Za-z0-9]/g, '') || 'RokidApp';
+  return {
+    'README.md':
+`# ${app.name} (UXR / Unity XR)
+
+Unity3D で作る Rokid 向け 3D/空間アプリの骨格。
+
+## セットアップ
+1. Unity Hub で本フォルダをプロジェクトとして開く（Unity 2021.3 LTS 以降推奨）
+2. UXR SDK を導入 — Package Manager で \`${SDKS.uxr.upm}\`
+   （UXR2.0: AR Studio/Lite = Rokid Max Pro/Max2 + Station Pro/2 構成向け。
+    Dock 用と Phone 用で SDK が分かれ、互換性はない点に注意）
+3. Build Settings → Android / arm64-v8a / minSdk ${SDKS.uxr.minSdk} で APK 出力
+4. 配信はワイヤレス可: \`rokid device install <apk> --target <glasses-ip>\`
+
+## 単眼HUDの注意
+3D 空間でも主要 UI は視野中央±10°以内・高コントラストで。
+`,
+    [`Assets/Scripts/${cls}Main.cs`]:
+`using UnityEngine;
+
+/// <summary>
+/// ${app.name} — UXR エントリポイント。
+/// RKCameraRig を配置したシーンから起動する。
+/// </summary>
+public class ${cls}Main : MonoBehaviour
+{
+    [SerializeField] private TextMesh hud;
+
+    void Start()
+    {
+        // TODO: UXR SDK 初期化 (RKCameraRig / RKInput)
+        if (hud != null)
+        {
+            hud.text = "${app.tagline || app.name}";
+            hud.color = new Color(0.2f, 1f, 0.53f); // 単色グリーンHUD
+        }
+    }
+
+    void Update()
+    {
+        // TODO: 音声コマンド '${app.voiceCommand || app.name}' / ヘッドポーズ入力
+    }
+}
+`,
+    'Packages/manifest.json': JSON.stringify(
+      {
+        dependencies: {
+          [SDKS.uxr.upm]: '2.x — Rokid UXR レジストリから導入',
+          'com.unity.xr.management': '4.4.0',
+        },
+        note: 'UXR SDK の正確な導入手順は公式 UXR-docs を参照。Dock/Phone 版は非互換。',
+      },
+      null,
+      2
+    ) + '\n',
+    'ProjectSettings/ProjectSettings.txt':
+`# Unity プロジェクト設定の要点（Unity エディタが正式な ProjectSettings.asset を生成する）
+productName: ${app.name}
+applicationIdentifier: ${pkg}
+minSdkVersion: ${SDKS.uxr.minSdk}
+targetArchitectures: ARM64
+`,
+    'rokid.app.json': JSON.stringify(rokidManifest(app, 'uxr'), null, 2) + '\n',
+  };
+}
+
 // ---- Web HUD: ブラウザ向けプロトタイプ ----
 function webHud(app) {
   return {
@@ -216,6 +326,8 @@ function rokidManifest(app, sdk) {
 const GENERATORS = {
   'cxr-s-ondevice': cxrSOnDevice,
   'cxr-m-companion': cxrMCompanion,
+  'cxr-l-standalone': cxrLStandalone,
+  'uxr-unity': uxrUnity,
   'web-hud': webHud,
 };
 

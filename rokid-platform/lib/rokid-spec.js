@@ -57,6 +57,16 @@ const SDKS = {
     minSdk: 28,
     package: 'apk',
   },
+  uxr: {
+    id: 'uxr',
+    label: 'UXR (Unity XR)',
+    runsOn: 'glasses-unity',
+    desc: 'Unity3D で 3D/空間表現を作る XR SDK。UXR2.0 は AR Studio/Lite 構成に対応。',
+    maven: null, // Unity Package Manager (UPM) 経由で導入
+    upm: 'com.rokid.xr.core',
+    minSdk: 29,
+    package: 'apk', // Unity から Android APK として書き出す
+  },
   'web-hud': {
     id: 'web-hud',
     label: 'Web HUD (プロトタイプ)',
@@ -81,6 +91,18 @@ const TEMPLATES = {
     sdk: 'cxr-m',
     label: 'スマホ連携アプリ',
     desc: 'スマホ側で重い処理を行い、グラスへHUDを送るコンパニオンアプリ。',
+  },
+  'cxr-l-standalone': {
+    id: 'cxr-l-standalone',
+    sdk: 'cxr-l',
+    label: 'スタンドアロンアプリ (CXR-L)',
+    desc: '標準の Rokid アプリを置き換える構成。AIDL で AI サービスへ直接バインドする。',
+  },
+  'uxr-unity': {
+    id: 'uxr-unity',
+    sdk: 'uxr',
+    label: 'Unity XR アプリ (UXR)',
+    desc: 'Unity3D プロジェクトの骨格。3D/空間コンテンツを UXR SDK で構築し APK 出力。',
   },
   'web-hud': {
     id: 'web-hud',

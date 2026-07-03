@@ -81,6 +81,8 @@ node cli/rokid.js device install path/to/any.apk                   # 任意APK�
 |--------------|-----|----------|------|
 | `cxr-s-ondevice` | CXR-S | グラス本体 | 音声起動の常駐HUDアプリ（APK） |
 | `cxr-m-companion` | CXR-M | スマホ | グラスへHUDを送るコンパニオン（APK） |
+| `cxr-l-standalone` | CXR-L | スマホ | 標準Rokidアプリを置き換えるスタンドアロン（APK/AIDL） |
+| `uxr-unity` | UXR | グラス(Unity) | Unity3Dで作る3D/空間アプリの骨格（APK出力） |
 | `web-hud` | Web | ブラウザ | ビルド不要の最小HUD試作 |
 
 生成物には Android マニフェスト・`build.gradle`・実装スケルトン・
@@ -112,7 +114,7 @@ ID 衝突時は自動でユニークIDを採番する。
 ## テスト
 
 ```bash
-npm test    # lib + device + HTTP API の 16 項目を検証
+npm test    # lib + device + HTTP API の 19 項目を検証
 ```
 
 ## Rokid 開発要件

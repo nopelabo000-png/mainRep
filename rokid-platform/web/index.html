@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Rokid 開発プラットフォーム</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='6' fill='none' stroke='%2333ff88' stroke-width='2'/%3E%3Ccircle cx='8' cy='8' r='2' fill='%2333ff88'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
@@ -18,6 +19,7 @@
   <nav class="tabs">
     <button class="tab active" data-tab="apps">アプリ</button>
     <button class="tab" data-tab="create">新規作成</button>
+    <button class="tab" data-tab="deploy">配信</button>
     <button class="tab" data-tab="spec">開発要件</button>
   </nav>
 </header>
@@ -45,6 +47,7 @@
             <p id="dMeta" class="muted"></p>
           </div>
           <div class="actions">
+            <button class="btn" id="installBtn" title="ビルド済みAPKを実機へ（配信タブで実行）">実機へ配信</button>
             <button class="btn" id="exportBtn">エクスポート (.rokidapp)</button>
             <button class="btn danger" id="deleteBtn">削除</button>
           </div>
@@ -92,6 +95,55 @@
       <button class="btn primary" type="submit">生成する</button>
       <p id="createResult" class="result"></p>
     </form>
+  </section>
+
+  <!-- 配信（実機 TCP 連携） -->
+  <section id="tab-deploy" class="tabpanel">
+    <div class="deploy">
+      <div class="spec-card">
+        <h3>接続 <span class="muted small">adb over Wi-Fi（TCP・ケーブル不要）</span></h3>
+        <div class="row">
+          <input id="dpTarget" placeholder="グラスの IP（例: 192.168.1.50 または 192.168.1.50:5555）">
+          <button class="btn" id="dpConnect">接続</button>
+          <button class="btn" id="dpDevices">端末一覧</button>
+        </div>
+        <p class="muted small">初回のみ USB 接続中に <span class="mono">rokid device tcpip</span> を実行してTCPを有効化。以降は Wi-Fi だけで完結します。</p>
+        <pre id="dpDevicesOut" class="dp-out" hidden></pre>
+      </div>
+
+      <div class="spec-card">
+        <h3>作成アプリのインストール</h3>
+        <div class="row">
+          <select id="dpAppSelect"></select>
+          <button class="btn primary" id="dpInstall">実機へインストール</button>
+        </div>
+        <p class="muted small">対象アプリを事前に <span class="mono">./gradlew assembleDebug</span> でビルドしておいてください（APK を自動検出します）。</p>
+      </div>
+
+      <div class="spec-card">
+        <h3>デフォルトアプリのバックアップ / リストア</h3>
+        <div class="row">
+          <input id="dpFilter" placeholder="フィルタ（例: ^com\.rokid・空で全プリイン）">
+          <button class="btn" id="dpBackup">バックアップ</button>
+        </div>
+        <div class="row">
+          <input id="dpRestoreDir" placeholder="リストア元（例: backups/192.168.1.50_5555）">
+          <button class="btn" id="dpRestore">リストア</button>
+        </div>
+        <p class="muted small">APK を <span class="mono">backups/&lt;接続先&gt;/</span> へ吸い出し、いつでも書き戻せます。</p>
+      </div>
+
+      <div class="spec-card">
+        <h3>端末上のパッケージ</h3>
+        <div class="row">
+          <button class="btn" id="dpPkgsSys">プリイン一覧</button>
+          <button class="btn" id="dpPkgsThird">サードパーティ一覧</button>
+        </div>
+        <pre id="dpPkgsOut" class="dp-out" hidden></pre>
+      </div>
+
+      <pre id="dpLog" class="dp-log" aria-live="polite"></pre>
+    </div>
   </section>
 
   <!-- 開発要件 -->
