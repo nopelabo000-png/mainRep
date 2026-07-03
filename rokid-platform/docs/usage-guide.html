@@ -254,7 +254,7 @@ src/main/java/com/example/translator/<span class="p">HudActivity.java</span>  <s
 <pre><code><span class="p">$</span> ./gradlew assembleDebug            <span class="c"># build/outputs/apk/debug/*.apk</span>
 <span class="p">$</span> adb connect <span class="s">&lt;glasses-ip&gt;</span>:5555     <span class="c"># Wi-Fi 接続（ケーブル不要）</span>
 <span class="p">$</span> adb install -r app-debug.apk       <span class="c"># Rokid Glasses へ</span></code></pre></div>
-          <div class="ui-do">他にも <b>CXR-M SDK での Wi-Fi サイドロード</b>、<b>Bluetooth SPP + Wi-Fi Direct でのスマホPush</b> などワイヤレス手段が複数あります。「開発要件」タブの配信方式表を参照。</div>
+          <div class="ui-do">プラットフォーム内蔵の <b>device コマンド</b>でも完結できます — <span class="mono">rokid device tcpip</span>（初回のみ）→ <span class="mono">rokid device install &lt;id&gt; --target &lt;ip&gt;</span> でビルド済みAPKを Wi-Fi 経由インストール。デフォルトアプリの <span class="mono">backup</span> / <span class="mono">restore</span> も可能です。</div>
         </div>
       </div>
 
