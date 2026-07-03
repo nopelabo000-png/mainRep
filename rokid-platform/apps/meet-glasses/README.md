@@ -1,11 +1,17 @@
 # Meet Glasses (CXR-S オンデバイス)
 
-YodaOS (Android 12 / SDK 32, arm64-v8a) の **Rokid Glasses 本体**で動作する
-Google Meet クライアント。グラス上にローカルサーバーを建て、そこから
-**Meet Media API + WebRTC** で会議へ直接接続する。入出力にはグラスの
-**マイク・スピーカー・カメラ**を使う。
+Rokid Glasses を **Google Meet のカメラ・マイク・スピーカーとして使う**アプリ。
+2つのモードがある:
 
-## アーキテクチャ
+| モード | ログイン | 仕組み | 場所 |
+|--------|---------|--------|------|
+| **A. バイパス（推奨・すぐ動く）** | 不要（PC側の通常ログインのみ） | PCのChrome拡張が getUserMedia をフックし、グラスの映像/音声をMeetへ注入。受話はグラスへ返送 | [`bridge/`](bridge/) |
+| **B. 直接参加（ログイン型）** | 必要（OAuth / Meet Media API） | グラス本体が WebRTC で会議へ直接参加 | `src/`（本README以下） |
+
+まず動かすなら **モードA** → [`bridge/README.md`](bridge/README.md)。
+以下はモードB（グラス単体で完結させたい場合）の説明。
+
+## アーキテクチャ（モードB）
 
 ```
 [Rokid Glasses 本体 / YodaOS]
