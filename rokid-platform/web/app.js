@@ -156,6 +156,23 @@ function fillDeployApps(selectId) {
   });
 }
 
+$('#dpFind').addEventListener('click', async () => {
+  const mac = $('#dpMac').value.trim();
+  if (!mac) return dpLog('MAC アドレスを入力してください', 'err');
+  const r = await dpRun('IP 検索（LAN掃引・数十秒）', () =>
+    api('/device/find', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mac }),
+    }));
+  if (r && r.found) {
+    $('#dpTarget').value = r.ip;
+    dpLog(`発見: ${r.ip} → 「接続」を押してください`, 'ok');
+  } else if (r) {
+    dpLog('見つかりませんでした。グラスが同じWi-Fiに接続済みか確認してください（Bluetoothだけでは不可）', 'err');
+  }
+});
+
 $('#dpConnect').addEventListener('click', async () => {
   const target = dpTarget();
   if (!target) return dpLog('接続先 IP を入力してください', 'err');

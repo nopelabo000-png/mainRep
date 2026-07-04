@@ -85,6 +85,21 @@ function ok(name) {
   delete process.env.ROKID_ADB_DRYRUN;
   ok('DRYRUN で接続コマンドを生成');
 
+  // netfind: MAC→IP 解決の純粋関数
+  const netfind = require('../lib/netfind');
+  assert.strictEqual(netfind.normalizeMac('A4-C1:38.aa bb CC'), 'a4c138aabbcc', 'mac正規化');
+  const arpUnix = netfind.parseArp(
+    '? (192.168.1.50) at a4:c1:38:aa:bb:cc on en0 ifscope [ethernet]\n' +
+    '? (192.168.1.1) at (incomplete) on en0'
+  );
+  assert(arpUnix.length === 1 && arpUnix[0].ip === '192.168.1.50' &&
+    arpUnix[0].mac === 'a4c138aabbcc', 'unix arp解析 + incomplete除外');
+  const arpWin = netfind.parseArp('  192.168.1.51          a4-c1-38-aa-bb-cd     dynamic');
+  assert(arpWin.length === 1 && arpWin[0].ip === '192.168.1.51' &&
+    arpWin[0].mac === 'a4c138aabbcd', 'windows arp解析');
+  await assert.rejects(() => netfind.findByMac('xx'), /形式が不正/, '不正MACを拒否');
+  ok('netfind: ARP解析/MAC正規化が正しい');
+
   // HTTP API
   console.log('HTTP API テスト');
   process.env.ROKID_PORT = '4199';

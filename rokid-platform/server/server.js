@@ -98,6 +98,12 @@ async function api(req, res, url) {
   // /api/device ... 実機(TCP)連携
   if (parts[1] === 'device') {
     const sub = parts[2];
+    if (sub === 'find' && method === 'POST') {
+      const body = await readBody(req);
+      const netfind = require('../lib/netfind');
+      const hit = await netfind.findByMac(body.mac);
+      return send(res, 200, { found: !!hit, ip: hit ? hit.ip : null });
+    }
     if (sub === 'devices' && method === 'GET') {
       return send(res, 200, { output: device.devices() });
     }

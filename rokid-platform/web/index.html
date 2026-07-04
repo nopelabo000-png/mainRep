@@ -101,6 +101,15 @@
   <section id="tab-deploy" class="tabpanel">
     <div class="deploy">
       <div class="spec-card">
+        <h3>IP が分からない場合 <span class="muted small">MAC アドレスから探す</span></h3>
+        <div class="row">
+          <input id="dpMac" placeholder="グラスの MAC（例: A4:C1:38:12:34:56）— Hi Rokid で確認">
+          <button class="btn" id="dpFind">IP を探す</button>
+        </div>
+        <p class="muted small">Hi Rokid は IP を出しませんが MAC は分かります。同じ Wi-Fi 上で LAN を掃引して IP を特定し、下の欄へ自動入力します。</p>
+      </div>
+
+      <div class="spec-card">
         <h3>接続 <span class="muted small">adb over Wi-Fi（TCP・ケーブル不要）</span></h3>
         <div class="row">
           <input id="dpTarget" placeholder="グラスの IP（例: 192.168.1.50 または 192.168.1.50:5555）">

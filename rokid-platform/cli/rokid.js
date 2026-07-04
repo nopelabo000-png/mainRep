@@ -144,6 +144,25 @@ const commands = {
     const { flags, positional } = parseFlags(rest);
     const target = flags.target || flags.t;
     switch (sub) {
+      case 'find': { // MACアドレスからLAN内のIPを特定（Hi RokidはIP非表示のため）
+        const netfind = require('../lib/netfind');
+        const mac = positional[0];
+        if (!mac) throw new Error('使い方: rokid device find <MACアドレス>');
+        if (netfind.normalizeMac(mac).length !== 12) {
+          throw new Error(`MAC アドレスの形式が不正です: ${mac}（例: A4:C1:38:12:34:56）`);
+        }
+        out(`LAN を掃引して ${mac} を検索中…（数十秒かかることがあります）`);
+        return netfind.findByMac(mac).then((hit) => {
+          if (!hit) {
+            out('見つかりませんでした。グラスが同じWi-Fiに接続済みか確認してください。');
+            out('（Bluetoothペアリングだけでは IP は付与されません）');
+            process.exitCode = 1;
+            return;
+          }
+          out(`発見: ${hit.ip}`);
+          out(`次: rokid device connect ${hit.ip}`);
+        });
+      }
       case 'tcpip': // USB接続中に実行→以降WiFiでTCP接続できる
         return out(device.enableTcpip(positional[0]));
       case 'connect':
@@ -183,6 +202,7 @@ const commands = {
       default:
         return out(
           'device サブコマンド:\n' +
+          '  find <MAC>                  MACアドレスからLAN内のIPを特定\n' +
           '  tcpip [port]                USB接続中の端末をTCPモードへ(以降WiFi可)\n' +
           '  connect <host[:port]>       TCPで端末へ接続\n' +
           '  disconnect [host[:port]]    切断\n' +
@@ -208,11 +228,15 @@ const commands = {
 function main() {
   const [cmd, ...rest] = process.argv.slice(2);
   const fn = commands[cmd] || commands.help;
-  try {
-    fn(rest);
-  } catch (e) {
+  const fail = (e) => {
     console.error('エラー: ' + e.message);
     process.exit(1);
+  };
+  try {
+    const r = fn(rest);
+    if (r && typeof r.catch === 'function') r.catch(fail); // 非同期コマンド対応
+  } catch (e) {
+    fail(e);
   }
 }
 
