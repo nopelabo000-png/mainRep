@@ -109,4 +109,23 @@ async function findByMac(mac, { skipSweep = false } = {}) {
   return hit || null;
 }
 
-module.exports = { normalizeMac, parseArp, localSubnets, sweep, arpTable, findByMac };
+/**
+ * LAN を掃引し、見えた全端末 [{ip, mac}] を返す（デバッグ用）。
+ * 目的の MAC が見つからない時、実際に何が見えているかを確認する。
+ */
+async function scan({ skipSweep = false } = {}) {
+  if (!skipSweep) {
+    for (const base of localSubnets()) await sweep(base);
+  }
+  // IP昇順で重複排除
+  const seen = new Map();
+  for (const e of arpTable()) if (!seen.has(e.ip)) seen.set(e.ip, e);
+  return [...seen.values()].sort((a, b) => {
+    const na = a.ip.split('.').map(Number);
+    const nb = b.ip.split('.').map(Number);
+    for (let i = 0; i < 4; i++) if (na[i] !== nb[i]) return na[i] - nb[i];
+    return 0;
+  });
+}
+
+module.exports = { normalizeMac, parseArp, localSubnets, sweep, arpTable, findByMac, scan };

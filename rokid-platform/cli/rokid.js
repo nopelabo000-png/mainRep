@@ -163,6 +163,18 @@ const commands = {
           out(`次: rokid device connect ${hit.ip}`);
         });
       }
+      case 'scan': { // LAN上の全端末を一覧（目的MACが見つからない時の切り分け）
+        const netfind = require('../lib/netfind');
+        out(`自分のサブネット: ${netfind.localSubnets().map((b) => b + '.0/24').join(', ') || '(なし)'}`);
+        out('LAN を掃引中…（数十秒）');
+        return netfind.scan().then((list) => {
+          if (!list.length) return out('端末が見つかりません（掃引が届いていない可能性）');
+          out(`発見 ${list.length} 台:`);
+          for (const e of list) out(`  ${e.ip.padEnd(16)} ${e.mac}`);
+          out('\nこの中にグラスのMAC(WiFi側)があるか確認してください。');
+          out('無ければ グラスとPCが別ネットワーク、またはHi Rokid表示がBluetooth MACの可能性。');
+        });
+      }
       case 'tcpip': // USB接続中に実行→以降WiFiでTCP接続できる
         return out(device.enableTcpip(positional[0]));
       case 'connect':
@@ -203,6 +215,7 @@ const commands = {
         return out(
           'device サブコマンド:\n' +
           '  find <MAC>                  MACアドレスからLAN内のIPを特定\n' +
+          '  scan                        LAN上の全端末をIP+MACで一覧(切り分け用)\n' +
           '  tcpip [port]                USB接続中の端末をTCPモードへ(以降WiFi可)\n' +
           '  connect <host[:port]>       TCPで端末へ接続\n' +
           '  disconnect [host[:port]]    切断\n' +
