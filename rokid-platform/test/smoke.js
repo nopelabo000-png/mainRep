@@ -66,6 +66,9 @@ function ok(name) {
   assert.strictEqual(device.normalizeTarget('192.168.1.5:7000'), '192.168.1.5:7000', 'port保持');
   assert.deepStrictEqual(device.cmd.connect('h:5555'), ['connect', 'h:5555'], 'connect args');
   assert.deepStrictEqual(device.cmd.tcpip(5555), ['tcpip', '5555'], 'tcpip args');
+  assert.deepStrictEqual(device.cmd.pair('h:37000', '123456'), ['pair', 'h:37000', '123456'], 'pair args');
+  assert.deepStrictEqual(device.cmd.pair('h:37000'), ['pair', 'h:37000'], 'pair args(コード無)');
+  assert.throws(() => device.pair('nohostport'), /host:port/, 'pair 不正入力を拒否');
   assert.deepStrictEqual(device.cmd.install('a.apk', 'h:1'), ['-s', 'h:1', 'install', '-r', 'a.apk'], 'install args');
   ok('device コマンド組み立てが正しい');
 

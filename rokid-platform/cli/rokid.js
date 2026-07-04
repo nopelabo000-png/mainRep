@@ -175,6 +175,8 @@ const commands = {
           out('無ければ グラスとPCが別ネットワーク、またはHi Rokid表示がBluetooth MACの可能性。');
         });
       }
+      case 'pair': // Android11+ ワイヤレスデバッグ: ケーブル不要でペアリング
+        return out(device.pair(positional[0], positional[1]));
       case 'tcpip': // USB接続中に実行→以降WiFiでTCP接続できる
         return out(device.enableTcpip(positional[0]));
       case 'connect':
@@ -216,6 +218,7 @@ const commands = {
           'device サブコマンド:\n' +
           '  find <MAC>                  MACアドレスからLAN内のIPを特定\n' +
           '  scan                        LAN上の全端末をIP+MACで一覧(切り分け用)\n' +
+          '  pair <host:port> [code]     Android11+ ワイヤレスデバッグでペアリング\n' +
           '  tcpip [port]                USB接続中の端末をTCPモードへ(以降WiFi可)\n' +
           '  connect <host[:port]>       TCPで端末へ接続\n' +
           '  disconnect [host[:port]]    切断\n' +

@@ -37,6 +37,8 @@ function sel(target) {
 // ---- 純粋なコマンド組み立て（副作用なし・テスト対象）----
 const cmd = {
   tcpip: (port = DEFAULT_PORT) => ['tcpip', String(port)],
+  // Android 11+ ワイヤレスデバッグ: ペアリング(host:port はペアリング用の別ポート)
+  pair: (hostPort, code) => (code ? ['pair', hostPort, String(code)] : ['pair', hostPort]),
   connect: (target) => ['connect', target],
   disconnect: (target) => (target ? ['disconnect', target] : ['disconnect']),
   devices: () => ['devices', '-l'],
@@ -92,6 +94,18 @@ function parsePaths(output) {
 /** USB 接続中の端末を TCP モードへ（以降 WiFi で接続可能になる）。 */
 function enableTcpip(port = DEFAULT_PORT) {
   return run(cmd.tcpip(port));
+}
+
+/**
+ * Android 11+ ワイヤレスデバッグのペアリング。
+ * ペアリング用ポート(端末の「ワイヤレスデバッグ」画面に表示される host:port)と
+ * 6桁コードを渡す。成功後は connect でデータポートへ繋ぐ。
+ */
+function pair(hostPort, code) {
+  if (!hostPort || !/:\d+$/.test(hostPort)) {
+    throw new Error('ペアリング先は host:port 形式で指定してください（端末のワイヤレスデバッグ画面に表示されます）');
+  }
+  return run(cmd.pair(hostPort, code));
 }
 
 /** TCP で端末へ接続。host のみなら :5555 を補う。 */
@@ -240,6 +254,7 @@ module.exports = {
   parsePaths,
   findApk,
   enableTcpip,
+  pair,
   connect,
   disconnect,
   devices,
