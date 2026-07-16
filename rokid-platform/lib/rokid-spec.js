@@ -162,7 +162,8 @@ const DEPLOY_METHODS = [
 
 // HUD デザイン推奨ガイド (単眼・単色前提)
 const HUD_GUIDE = {
-  safeArea: { width: 640, height: 400 }, // 論理ピクセルの目安
+  // RV101 実機の確定値 480×640 モノクロ緑 (cursive-team/rokid-apps DEPLOY_RV101.md)
+  safeArea: { width: 480, height: 640 },
   maxLinesPerView: 5,
   minFontPx: 28,
   palette: { fg: '#33ff88', dim: '#1f8a4c', bg: '#000000' },
