@@ -1,0 +1,19 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'com.example.translator'
+    compileSdk 32
+    defaultConfig {
+        applicationId 'com.example.translator'
+        minSdk 32
+        targetSdk 32
+        versionCode 1
+        versionName '1.0.0'
+        ndk { abiFilters 'arm64-v8a' }
+    }
+    buildTypes { release { minifyEnabled false } }
+}
+
+dependencies {
+    implementation 'com.rokid.cxr:cxr-service-bridge:1.0-SNAPSHOT'
+}

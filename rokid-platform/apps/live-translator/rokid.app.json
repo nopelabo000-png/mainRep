@@ -1,0 +1,14 @@
+{
+  "schema": "rokid.app/v1",
+  "id": "live-translator",
+  "name": "Live Translator",
+  "sdk": "cxr-s",
+  "version": "1.0.0",
+  "package": "apk",
+  "androidPackage": "com.example.translator",
+  "voiceCommand": "翻訳開始",
+  "tagline": "Real-time AR translation",
+  "description": "",
+  "author": "",
+  "createdAt": "2026-07-03T03:56:05.597Z"
+}

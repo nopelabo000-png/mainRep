@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rokid 開発プラットフォーム</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='6' fill='none' stroke='%2333ff88' stroke-width='2'/%3E%3Ccircle cx='8' cy='8' r='2' fill='%2333ff88'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="logo">◉</span>
+    <div>
+      <h1>Rokid Dev Platform</h1>
+      <p id="subtitle">AIスマートグラス アプリ開発環境</p>
+    </div>
+  </div>
+  <nav class="tabs">
+    <button class="tab active" data-tab="apps">アプリ</button>
+    <button class="tab" data-tab="create">新規作成</button>
+    <button class="tab" data-tab="deploy">配信</button>
+    <button class="tab" data-tab="spec">開発要件</button>
+  </nav>
+</header>
+
+<main>
+  <!-- アプリ一覧 + 詳細 -->
+  <section id="tab-apps" class="tabpanel active">
+    <aside class="sidebar">
+      <div class="sidebar-head">
+        <h2>格納済みアプリ</h2>
+        <label class="btn small" for="importFile">インポート</label>
+        <input type="file" id="importFile" accept=".rokidapp,application/json" hidden>
+      </div>
+      <ul id="appList" class="app-list"></ul>
+    </aside>
+
+    <div class="detail">
+      <div id="emptyDetail" class="empty">
+        <p>左のリストからアプリを選択するか、「新規作成」から始めてください。</p>
+      </div>
+      <article id="appDetail" hidden>
+        <div class="detail-head">
+          <div>
+            <h2 id="dName"></h2>
+            <p id="dMeta" class="muted"></p>
+          </div>
+          <div class="actions">
+            <button class="btn" id="installBtn" title="ビルド済みAPKを実機へ（配信タブで実行）">実機へ配信</button>
+            <button class="btn" id="exportBtn">エクスポート (.rokidapp)</button>
+            <button class="btn danger" id="deleteBtn">削除</button>
+          </div>
+        </div>
+
+        <div class="detail-grid">
+          <div class="files">
+            <h3>ファイル</h3>
+            <ul id="fileList" class="file-list"></ul>
+            <pre id="fileView" class="file-view"></pre>
+          </div>
+
+          <div class="sim">
+            <h3>HUD シミュレータ <span class="muted">(右目単眼・単色グリーン)</span></h3>
+            <div class="glasses">
+              <div class="lens">
+                <div id="hudScreen" class="hud-screen">
+                  <div id="hudName" class="hud-name"></div>
+                  <div id="hudTagline" class="hud-tagline"></div>
+                  <div id="hudVoice" class="hud-voice"></div>
+                </div>
+              </div>
+            </div>
+            <p class="muted small" id="simNote"></p>
+          </div>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <!-- 新規作成 -->
+  <section id="tab-create" class="tabpanel">
+    <form id="createForm" class="create-form">
+      <h2>新しい Rokid アプリ</h2>
+      <label>アプリ名 <input name="name" required placeholder="My Glasses App"></label>
+      <label>テンプレート
+        <select name="template" id="templateSelect"></select>
+      </label>
+      <p id="templateDesc" class="muted small"></p>
+      <label>タグライン <input name="tagline" placeholder="HUDに出す一言"></label>
+      <label>音声コマンド <input name="voiceCommand" placeholder="例: ナビ開始"></label>
+      <label>Android パッケージ <input name="androidPackage" placeholder="com.example.app"></label>
+      <label>作者 <input name="author" placeholder="あなたの名前"></label>
+      <label>説明 <textarea name="description" rows="3"></textarea></label>
+      <button class="btn primary" type="submit">生成する</button>
+      <p id="createResult" class="result"></p>
+    </form>
+  </section>
+
+  <!-- 配信（実機 TCP 連携） -->
+  <section id="tab-deploy" class="tabpanel">
+    <div class="deploy">
+      <div class="spec-card">
+        <h3>IP が分からない場合 <span class="muted small">MAC アドレスから探す</span></h3>
+        <div class="row">
+          <input id="dpMac" placeholder="グラスの MAC（例: A4:C1:38:12:34:56）— Hi Rokid で確認">
+          <button class="btn" id="dpFind">IP を探す</button>
+        </div>
+        <p class="muted small">Hi Rokid は IP を出しませんが MAC は分かります。同じ Wi-Fi 上で LAN を掃引して IP を特定し、下の欄へ自動入力します。</p>
+      </div>
+
+      <div class="spec-card">
+        <h3>接続 <span class="muted small">adb over Wi-Fi（TCP・ケーブル不要）</span></h3>
+        <div class="row">
+          <input id="dpTarget" placeholder="グラスの IP（例: 192.168.1.50 または 192.168.1.50:5555）">
+          <button class="btn" id="dpConnect">接続</button>
+          <button class="btn" id="dpDevices">端末一覧</button>
+        </div>
+        <p class="muted small">初回のみ USB 接続中に <span class="mono">rokid device tcpip</span> を実行してTCPを有効化。以降は Wi-Fi だけで完結します。</p>
+        <pre id="dpDevicesOut" class="dp-out" hidden></pre>
+      </div>
+
+      <div class="spec-card">
+        <h3>作成アプリのインストール</h3>
+        <div class="row">
+          <select id="dpAppSelect"></select>
+          <button class="btn primary" id="dpInstall">実機へインストール</button>
+        </div>
+        <p class="muted small">対象アプリを事前に <span class="mono">./gradlew assembleDebug</span> でビルドしておいてください（APK を自動検出します）。</p>
+      </div>
+
+      <div class="spec-card">
+        <h3>デフォルトアプリのバックアップ / リストア</h3>
+        <div class="row">
+          <input id="dpFilter" placeholder="フィルタ（例: ^com\.rokid・空で全プリイン）">
+          <button class="btn" id="dpBackup">バックアップ</button>
+        </div>
+        <div class="row">
+          <input id="dpRestoreDir" placeholder="リストア元（例: backups/192.168.1.50_5555）">
+          <button class="btn" id="dpRestore">リストア</button>
+        </div>
+        <p class="muted small">APK を <span class="mono">backups/&lt;接続先&gt;/</span> へ吸い出し、いつでも書き戻せます。</p>
+      </div>
+
+      <div class="spec-card">
+        <h3>端末上のパッケージ</h3>
+        <div class="row">
+          <button class="btn" id="dpPkgsSys">プリイン一覧</button>
+          <button class="btn" id="dpPkgsThird">サードパーティ一覧</button>
+        </div>
+        <pre id="dpPkgsOut" class="dp-out" hidden></pre>
+      </div>
+
+      <pre id="dpLog" class="dp-log" aria-live="polite"></pre>
+    </div>
+  </section>
+
+  <!-- 開発要件 -->
+  <section id="tab-spec" class="tabpanel">
+    <div id="specContent" class="spec"></div>
+  </section>
+</main>
+
+<div id="toast" class="toast" hidden></div>
+<script src="/app.js"></script>
+</body>
+</html>

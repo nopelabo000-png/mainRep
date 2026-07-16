@@ -1,0 +1,14 @@
+{
+  "schema": "rokid.app/v1",
+  "id": "meet-glasses",
+  "name": "Meet Glasses",
+  "sdk": "cxr-s",
+  "version": "1.0.0",
+  "package": "apk",
+  "androidPackage": "com.rokid.meetglass",
+  "voiceCommand": "ミート開始",
+  "tagline": "On-glass Google Meet over WebRTC",
+  "description": "グラス本体でローカルサーバーを動かし、Meet Media API+WebRTCでGoogle Meetへ直接接続。マイク/スピーカー/カメラを入出力に使用。",
+  "author": "nopelabo000",
+  "createdAt": "2026-06-14T06:37:29.988Z"
+}

@@ -1,0 +1,291 @@
+<style>
+  :root{
+    /* light theme (default) — green-biased neutrals, deliberate */
+    --bg:#eef2ee; --panel:#ffffff; --panel-2:#f5f9f6; --line:#d6e0d9;
+    --ink:#0f2118; --muted:#586b60; --accent:#0b7a43; --accent-2:#0a6b3b;
+    --accent-soft:#e3f3ea; --amber:#a6650a;
+    --code-bg:#0b110e; --code-fg:#c6ecd6; --code-line:#1b2a22; --code-prompt:#3bd982;
+    --shadow:0 1px 2px rgba(16,40,28,.06),0 8px 24px -12px rgba(16,40,28,.18);
+    --font-body:system-ui,-apple-system,"Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;
+    --font-mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+    --maxw:880px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#080c0a; --panel:#0e1512; --panel-2:#0b110e; --line:#1c2b23;
+      --ink:#d8f5e6; --muted:#6f8a7c; --accent:#33ff88; --accent-2:#5affa0;
+      --accent-soft:#10231a; --amber:#ffb454;
+      --code-bg:#070b09; --code-fg:#c6ecd6; --code-line:#17241d; --code-prompt:#33ff88;
+      --shadow:0 1px 2px rgba(0,0,0,.4),0 12px 32px -16px rgba(0,0,0,.7);
+    }
+  }
+  :root[data-theme="light"]{
+    --bg:#eef2ee; --panel:#ffffff; --panel-2:#f5f9f6; --line:#d6e0d9;
+    --ink:#0f2118; --muted:#586b60; --accent:#0b7a43; --accent-2:#0a6b3b;
+    --accent-soft:#e3f3ea; --amber:#a6650a;
+    --code-bg:#0b110e; --code-fg:#c6ecd6; --code-line:#1b2a22; --code-prompt:#3bd982;
+    --shadow:0 1px 2px rgba(16,40,28,.06),0 8px 24px -12px rgba(16,40,28,.18);
+  }
+  :root[data-theme="dark"]{
+    --bg:#080c0a; --panel:#0e1512; --panel-2:#0b110e; --line:#1c2b23;
+    --ink:#d8f5e6; --muted:#6f8a7c; --accent:#33ff88; --accent-2:#5affa0;
+    --accent-soft:#10231a; --amber:#ffb454;
+    --code-bg:#070b09; --code-fg:#c6ecd6; --code-line:#17241d; --code-prompt:#33ff88;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 12px 32px -16px rgba(0,0,0,.7);
+  }
+
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-body);
+    line-height:1.65;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px}
+  .mono{font-family:var(--font-mono)}
+
+  /* ---- hero ---- */
+  header.hero{padding:64px 0 40px;border-bottom:1px solid var(--line)}
+  .eyebrow{font-family:var(--font-mono);font-size:12px;letter-spacing:.22em;text-transform:uppercase;
+    color:var(--accent);display:flex;align-items:center;gap:10px;margin:0 0 18px}
+  .eyebrow::before{content:"";width:26px;height:1px;background:var(--accent)}
+  h1{font-size:clamp(30px,5vw,46px);line-height:1.1;margin:0 0 16px;text-wrap:balance;letter-spacing:-.01em}
+  h1 .g{color:var(--accent)}
+  .lede{font-size:18px;color:var(--muted);max-width:60ch;margin:0}
+
+  /* lens motif */
+  .lens{margin:34px 0 0;display:flex;justify-content:center}
+  .lens-body{width:min(420px,100%);aspect-ratio:16/9;border-radius:18px;border:1px solid var(--line);
+    background:radial-gradient(120% 90% at 50% 30%,color-mix(in srgb,var(--accent) 10%,transparent),transparent 60%),var(--panel-2);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;position:relative;overflow:hidden;box-shadow:var(--shadow)}
+  .lens-body::after{content:"";position:absolute;inset:0;box-shadow:inset 0 0 60px rgba(0,0,0,.28);pointer-events:none;border-radius:18px}
+  .lens-title{font-family:var(--font-mono);font-size:26px;color:var(--accent);text-shadow:0 0 14px color-mix(in srgb,var(--accent) 55%,transparent)}
+  .lens-sub{font-family:var(--font-mono);font-size:13px;color:color-mix(in srgb,var(--accent) 70%,var(--muted))}
+  .lens-cmd{font-family:var(--font-mono);font-size:11px;color:var(--muted);margin-top:6px}
+
+  /* ---- entry points ---- */
+  section{padding:48px 0}
+  .sec-label{font-family:var(--font-mono);font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin:0 0 20px}
+  .entries{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .entry{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px;box-shadow:var(--shadow)}
+  .entry h3{margin:0 0 6px;font-size:18px;display:flex;align-items:center;gap:9px}
+  .entry .tag{font-family:var(--font-mono);font-size:11px;color:var(--accent);border:1px solid var(--line);border-radius:20px;padding:2px 9px}
+  .entry p{margin:0;color:var(--muted);font-size:14px}
+  .entry .who{margin-top:14px;font-size:13px;color:var(--ink)}
+  .entry .who b{color:var(--accent)}
+
+  /* ---- steps (a real sequence → numbered) ---- */
+  .steps{position:relative}
+  .step{display:grid;grid-template-columns:52px 1fr;gap:22px;padding:0 0 34px;position:relative}
+  .step:last-child{padding-bottom:0}
+  .rail{display:flex;flex-direction:column;align-items:center}
+  .num{width:44px;height:44px;flex:0 0 44px;border-radius:50%;border:1px solid var(--accent);
+    color:var(--accent);background:var(--panel);font-family:var(--font-mono);font-weight:600;font-size:17px;
+    display:flex;align-items:center;justify-content:center;z-index:1}
+  .line{flex:1;width:1px;background:linear-gradient(var(--accent),var(--line));margin:6px 0 -6px;opacity:.5}
+  .step:last-child .line{display:none}
+  .step-body{padding-top:6px;min-width:0}
+  .step-body h3{margin:0 0 4px;font-size:19px}
+  .step-body .aim{margin:0 0 14px;color:var(--muted);font-size:14px}
+  .where{font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;
+    color:var(--amber);margin:0 0 12px;display:inline-block}
+
+  /* terminal / code — committed dark world in both themes (HUD identity) */
+  .term{background:var(--code-bg);border:1px solid var(--code-line);border-radius:10px;overflow:hidden;margin:0 0 6px}
+  .term-bar{display:flex;align-items:center;gap:7px;padding:9px 12px;border-bottom:1px solid var(--code-line)}
+  .dot{width:9px;height:9px;border-radius:50%;background:#26382e}
+  .term-name{font-family:var(--font-mono);font-size:11px;color:#6f8a7c;margin-left:6px}
+  pre{margin:0;padding:14px 16px;overflow-x:auto}
+  code{font-family:var(--font-mono);font-size:13px;line-height:1.7;color:var(--code-fg);white-space:pre}
+  .p{color:var(--code-prompt)}
+  .c{color:#5f7a6c}
+  .s{color:#8fd0ee}
+
+  .ui-do{background:var(--accent-soft);border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:13.5px}
+  .ui-do b{color:var(--accent)}
+
+  /* ---- tracks table ---- */
+  .cmp{width:100%;border-collapse:collapse;font-size:14px;background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .cmp th,.cmp td{padding:12px 14px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+  .cmp th{font-family:var(--font-mono);font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);font-weight:600}
+  .cmp tr:last-child td{border-bottom:none}
+  .cmp td:first-child{color:var(--ink);font-weight:600;width:34%}
+  .cmp .mono{font-size:12.5px;color:var(--accent)}
+
+  footer{border-top:1px solid var(--line);padding:34px 0 60px;color:var(--muted);font-size:13px}
+  footer b{color:var(--ink)}
+  .callout{background:var(--panel-2);border:1px solid var(--line);border-left:3px solid var(--accent);
+    border-radius:8px;padding:14px 16px;margin:18px 0 0;font-size:14px}
+
+  @media (max-width:600px){
+    .entries{grid-template-columns:1fr}
+    .step{grid-template-columns:40px 1fr;gap:16px}
+    .num{width:38px;height:38px;flex-basis:38px;font-size:15px}
+    .cmp td:first-child{width:40%}
+  }
+  @media (prefers-reduced-motion:no-preference){
+    .lens-title{animation:flick 6s ease-in-out infinite}
+    @keyframes flick{0%,97%,100%{opacity:1}98%{opacity:.72}99%{opacity:.9}}
+  }
+</style>
+
+<header class="hero">
+  <div class="wrap">
+    <p class="eyebrow">Rokid Dev Platform · 利用ガイド</p>
+    <h1>グラスアプリを、<span class="g">作って・貯めて・渡す</span>までの一本道</h1>
+    <p class="lede">Rokid Glasses 向けアプリの開発から格納、他環境への受け渡しまで。
+      Claude Code の CLI と Web UI、どちらから入っても同じ場所（レジストリ）に届きます。実際に翻訳アプリ 1 本を作る流れで見ていきます。</p>
+
+    <div class="lens">
+      <div class="lens-body" role="img" aria-label="単眼グリーンHUDのプレビュー：Live Translator">
+        <div class="lens-title">Live Translator</div>
+        <div class="lens-sub">Real-time AR translation</div>
+        <div class="lens-cmd">🎤 「翻訳開始」</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<section>
+  <div class="wrap">
+    <p class="sec-label">2つの入り口 — 好きな方でよい</p>
+    <div class="entries">
+      <div class="entry">
+        <h3><span class="tag">CLI</span> Claude Code から</h3>
+        <p>チャットに指示するだけ。ひな型生成・一覧・入出力を 1 コマンドで。ファイルはそのまま編集対象になります。</p>
+        <p class="who">向いている人 — <b>手を動かして実装する開発者</b>。差分やコミットまで一気通貫。</p>
+      </div>
+      <div class="entry">
+        <h3><span class="tag">Web UI</span> ブラウザから</h3>
+        <p>一覧・作成フォーム・HUDシミュレータ・要件タブを見ながら操作。インポート/エクスポートもボタンで完結。</p>
+        <p class="who">向いている人 — <b>企画・デザイン・レビュー担当</b>。コードを書かず全体像を掴める。</p>
+      </div>
+    </div>
+    <div class="callout">どちらも同じ <span class="mono">apps/registry.json</span> を読み書きします。CLI で作ったアプリは UI にも即座に現れ、逆も同じ。混在して使えます。</div>
+  </div>
+</section>
+
+<section style="padding-top:8px">
+  <div class="wrap">
+    <p class="sec-label">利用の流れ — 「翻訳アプリ」を例に</p>
+    <div class="steps">
+
+      <div class="step">
+        <div class="rail"><div class="num">0</div><div class="line"></div></div>
+        <div class="step-body">
+          <h3>プラットフォームを起動する</h3>
+          <p class="aim">Web UI を使うなら最初に一度だけ。CLI だけで完結するなら不要です。</p>
+          <span class="where">端末 / Claude Code</span>
+          <div class="term"><div class="term-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="term-name">bash</span></div>
+<pre><code><span class="c"># 依存インストール不要（Node標準ライブラリのみ）</span>
+<span class="p">$</span> cd rokid-platform
+<span class="p">$</span> npm run serve      <span class="c"># → http://localhost:4173</span></code></pre></div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="rail"><div class="num">1</div><div class="line"></div></div>
+        <div class="step-body">
+          <h3>アプリのひな型を作る</h3>
+          <p class="aim">テンプレート（実行場所）を選んで生成。音声コマンドやタグラインをその場で指定できます。</p>
+          <span class="where">CLI の場合</span>
+          <div class="term"><div class="term-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="term-name">rokid</span></div>
+<pre><code><span class="p">$</span> node cli/rokid.js new <span class="s">"Live Translator"</span> -t cxr-s-ondevice \
+      --voice <span class="s">"翻訳開始"</span> --tagline <span class="s">"Real-time AR translation"</span> \
+      --pkg com.example.translator
+<span class="c"># → apps/live-translator/ に 5ファイル生成 + レジストリ登録</span></code></pre></div>
+          <div class="ui-do"><b>UI の場合</b> — 「新規作成」タブ → テンプレート選択 → アプリ名・音声コマンド等を入力 → <b>生成する</b>。作成後すぐ詳細画面へ。</div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="rail"><div class="num">2</div><div class="line"></div></div>
+        <div class="step-body">
+          <h3>中身を実装する</h3>
+          <p class="aim">生成物は Android マニフェスト・build.gradle・実装スケルトン・記述子 <span class="mono">rokid.app.json</span>。Claude Code でそのまま編集し、実装を書き進めます。</p>
+          <span class="where">apps/&lt;id&gt;/</span>
+          <div class="term"><div class="term-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="term-name">apps/live-translator</span></div>
+<pre><code>README.md
+build.gradle
+rokid.app.json
+src/main/AndroidManifest.xml
+src/main/java/com/example/translator/<span class="p">HudActivity.java</span>  <span class="c">← ここに実装</span></code></pre></div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="rail"><div class="num">3</div><div class="line"></div></div>
+        <div class="step-body">
+          <h3>HUDシミュレータで見え方を確認</h3>
+          <p class="aim">実機がなくても、右目単眼・単色グリーンの見え方を UI 上でプレビュー。名前・タグライン・音声コマンドがレンズに描画されます。</p>
+          <div class="ui-do"><b>UI の場合</b> — 「アプリ」タブでアプリを選ぶと、右側の<b>レンズ枠</b>に HUD が表示。単眼・単色前提のレイアウト崩れをここで早期に発見できます。</div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="rail"><div class="num">4</div><div class="line"></div></div>
+        <div class="step-body">
+          <h3>エクスポートして持ち出す</h3>
+          <p class="aim">アプリ一式を <span class="mono">.rokidapp</span>（依存ゼロの JSON バンドル）1 ファイルに。メンバー共有や別環境への移送に使います。</p>
+          <span class="where">CLI の場合</span>
+          <div class="term"><div class="term-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="term-name">rokid</span></div>
+<pre><code><span class="p">$</span> node cli/rokid.js export live-translator
+<span class="c"># → exports/live-translator.rokidapp</span></code></pre></div>
+          <div class="ui-do"><b>UI の場合</b> — 詳細画面の <b>エクスポート (.rokidapp)</b> ボタンでそのままダウンロード。</div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="rail"><div class="num">5</div><div class="line"></div></div>
+        <div class="step-body">
+          <h3>別の環境で取り込む</h3>
+          <p class="aim">受け取った <span class="mono">.rokidapp</span> をインポートすると、フォルダとレジストリを完全再構築。ID が衝突しても自動で採番するので上書き事故がありません。</p>
+          <span class="where">CLI の場合</span>
+          <div class="term"><div class="term-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="term-name">rokid</span></div>
+<pre><code><span class="p">$</span> node cli/rokid.js import ./live-translator.rokidapp
+<span class="c"># → 取り込み完了、そのまま編集・再エクスポート可能</span></code></pre></div>
+          <div class="ui-do"><b>UI の場合</b> — サイドバーの <b>インポート</b> から <span class="mono">.rokidapp</span> を選ぶだけ。取り込んだアプリが即座に一覧へ。</div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="rail"><div class="num">6</div></div>
+        <div class="step-body">
+          <h3>APK をビルドして実機へ（ワイヤレス可）</h3>
+          <p class="aim">実装が固まったら Gradle で APK を作り、グラス（YodaOS）へ。<b>有線ケーブルは必須ではありません</b> — Wi-Fi/Bluetooth 経由の配信が主流です。</p>
+          <span class="where">端末 — 📶 Wi-Fi 経由（推奨）</span>
+          <div class="term"><div class="term-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="term-name">bash</span></div>
+<pre><code><span class="p">$</span> ./gradlew assembleDebug            <span class="c"># build/outputs/apk/debug/*.apk</span>
+<span class="p">$</span> adb connect <span class="s">&lt;glasses-ip&gt;</span>:5555     <span class="c"># Wi-Fi 接続（ケーブル不要）</span>
+<span class="p">$</span> adb install -r app-debug.apk       <span class="c"># Rokid Glasses へ</span></code></pre></div>
+          <div class="ui-do">プラットフォーム内蔵の <b>device コマンド</b>でも完結できます — <span class="mono">rokid device tcpip</span>（初回のみ）→ <span class="mono">rokid device install &lt;id&gt; --target &lt;ip&gt;</span> でビルド済みAPKを Wi-Fi 経由インストール。デフォルトアプリの <span class="mono">backup</span> / <span class="mono">restore</span> も可能です。</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<section style="padding-top:8px">
+  <div class="wrap">
+    <p class="sec-label">CLI と Web UI の対応表</p>
+    <div style="overflow-x:auto">
+    <table class="cmp">
+      <thead><tr><th>やりたいこと</th><th>CLI（Claude Code）</th><th>Web UI</th></tr></thead>
+      <tbody>
+        <tr><td>テンプレート/要件を見る</td><td class="mono">rokid templates / spec</td><td>「開発要件」タブ</td></tr>
+        <tr><td>アプリを作る</td><td class="mono">rokid new &lt;名&gt; -t &lt;型&gt;</td><td>「新規作成」フォーム</td></tr>
+        <tr><td>一覧・詳細を見る</td><td class="mono">rokid list / show &lt;id&gt;</td><td>「アプリ」タブ + 詳細</td></tr>
+        <tr><td>見え方を確認</td><td>ファイルを直接確認</td><td>HUDシミュレータ</td></tr>
+        <tr><td>エクスポート</td><td class="mono">rokid export &lt;id&gt;</td><td>エクスポートボタン</td></tr>
+        <tr><td>インポート</td><td class="mono">rokid import &lt;file&gt;</td><td>インポートボタン</td></tr>
+        <tr><td>削除</td><td class="mono">rokid remove &lt;id&gt;</td><td>削除ボタン</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <p><b>格納場所</b> — アプリの実体は <span class="mono">rokid-platform/apps/&lt;id&gt;/</span>、一覧は <span class="mono">apps/registry.json</span>。
+    リポジトリにコミットすればチームで共有でき、<span class="mono">.rokidapp</span> はリポジトリ外の相手にも 1 ファイルで渡せます。</p>
+    <p style="margin-top:10px">テンプレートは <b>CXR-S（オンデバイス）</b> / <b>CXR-M（スマホ連携）</b> / <b>CXR-L（スタンドアロン）</b> / <b>UXR（Unity XR）</b> / <b>Web HUD（試作）</b> の 5 種。実機への配信は Web UI の「配信」タブからも行えます（接続・インストール・バックアップ・リストア）。</p>
+  </div>
+</footer>

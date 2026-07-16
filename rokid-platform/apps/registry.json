@@ -1,0 +1,58 @@
+{
+  "apps": [
+    {
+      "id": "live-translator",
+      "name": "Live Translator",
+      "template": "cxr-s-ondevice",
+      "sdk": "cxr-s",
+      "version": "1.0.0",
+      "androidPackage": "com.example.translator",
+      "voiceCommand": "翻訳開始",
+      "tagline": "Real-time AR translation",
+      "description": "",
+      "author": "",
+      "createdAt": "2026-07-03T03:56:05.597Z",
+      "updatedAt": "2026-07-03T03:56:05.597Z",
+      "files": [
+        "README.md",
+        "build.gradle",
+        "rokid.app.json",
+        "src/main/AndroidManifest.xml",
+        "src/main/java/com/example/translator/HudActivity.java"
+      ]
+    },
+    {
+      "id": "meet-glasses",
+      "name": "Meet Glasses",
+      "template": "cxr-s-ondevice",
+      "sdk": "cxr-s",
+      "version": "1.0.0",
+      "androidPackage": "com.rokid.meetglass",
+      "voiceCommand": "ミート開始",
+      "tagline": "On-glass Google Meet over WebRTC",
+      "description": "グラスをGoogle Meetのカメラ・マイク・スピーカーにする。A:バイパス(Chrome拡張+WebRTCブリッジ、ログイン不要) / B:直接参加(Meet Media API+OAuth)の2モード。",
+      "author": "nopelabo000",
+      "createdAt": "2026-06-14T06:37:29.988Z",
+      "updatedAt": "2026-07-03T12:45:05.116Z",
+      "files": [
+        "README.md",
+        "bridge/README.md",
+        "bridge/extension/content.js",
+        "bridge/extension/inject.js",
+        "bridge/extension/manifest.json",
+        "bridge/extension/popup.html",
+        "bridge/extension/popup.js",
+        "bridge/glasses/index.html",
+        "bridge/server/bridge-server.js",
+        "build.gradle",
+        "rokid.app.json",
+        "src/main/AndroidManifest.xml",
+        "src/main/java/com/rokid/meetglass/GlassMediaIO.java",
+        "src/main/java/com/rokid/meetglass/HudActivity.java",
+        "src/main/java/com/rokid/meetglass/LocalControlServer.java",
+        "src/main/java/com/rokid/meetglass/MeetForegroundService.java",
+        "src/main/java/com/rokid/meetglass/MeetMediaClient.java"
+      ]
+    }
+  ]
+}
